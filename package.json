@@ -1,7 +1,7 @@
 {
   "name": "lets-encrypt-acme-client",
-  "version": "1.0.1",
-  "description": "Use and renew Lets Encrypt 90 Day Certificates automatically (ACMEv2)",
+  "version": "1.0.3",
+  "description": "Issue and Renew Lets Encrypt! 90 Day Certificates Automatically (ACMEv2)",
   "main": "lets-encrypt-acme-client.js",
   "type": "module",
   "keywords": [
@@ -9,7 +9,28 @@
     "encrypt",
     "acme",
     "certificate",
-    "automatic"
+    "automatic",
+    "acme-v2",
+    "renew",
+    "daemon",
+    "mixin",
+    "node.js",
+    "ssl",
+    "tls",
+    "security",
+    "web",
+    "https",
+    "automation",
+    "certbot",
+    "open-source",
+    "devops",
+    "cloud",
+    "server",
+    "api",
+    "configuration",
+    "monitoring",
+    "scripting",
+    "node"
   ],
   "author": "FirstTimeEZ",
   "license": "Apache-2.0",
@@ -18,5 +39,10 @@
       "type": "Apache-2.0",
       "url": "http://www.apache.org/licenses/LICENSE-2.0"
     }
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FirstTimeEZ/server-ssl"
+  },
+  "homepage": "https://github.com/FirstTimeEZ/acme"
 }
