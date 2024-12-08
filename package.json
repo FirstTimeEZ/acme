@@ -1,6 +1,6 @@
 {
   "name": "lets-encrypt-acme-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Use and renew Lets Encrypt 90 Day Certificates automatically (ACMEv2)",
   "main": "lets-encrypt-acme-client.js",
   "type": "module",
