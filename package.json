@@ -1,0 +1,22 @@
+{
+  "name": "lets-encrypt-acme-client",
+  "version": "1.0.0",
+  "description": "Use and renew Lets Encrypt 90 Day Certificates automatically (ACMEv2)",
+  "main": "lets-encrypt-acme-client.js",
+  "type": "module",
+  "keywords": [
+    "lets",
+    "encrypt",
+    "acme",
+    "certificate",
+    "automatic"
+  ],
+  "author": "FirstTimeEZ",
+  "license": "Apache-2.0",
+  "licenses": [
+    {
+      "type": "Apache-2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ]
+}
