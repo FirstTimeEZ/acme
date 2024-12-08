@@ -1,1 +1,0 @@
-declare module 'lets-encrypt-acme-client';
