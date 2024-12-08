@@ -1,7 +1,7 @@
 {
   "name": "lets-encrypt-acme-client",
-  "version": "1.0.3",
-  "description": "Issue and Renew Lets Encrypt! 90 Day Certificates Automatically (ACMEv2)",
+  "version": "1.0.4",
+  "description": "Automatically Issue and Renew Let's Encrypt Certificates by utilizing a Daemon that operates periodically alongside a Mixin to handle challenge completions. (ACMEv2)",
   "main": "lets-encrypt-acme-client.js",
   "type": "module",
   "keywords": [

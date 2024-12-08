@@ -1,12 +1,16 @@
 # Lets Encrypt ACME Client
 
-Uses a `Daemon` and a `Mixin` to issue and renew `Lets Encrypt!` certificates automatically (ACMEv2)
+Automatically Issue and Renew `Let's Encrypt Certificates` (ACMEv2)
+
+Utilizes a `Daemon` that operates periodically alongside a `Mixin` to handle challenge completions.
 
 ## Getting Started
 
-The easiest way to understand how the daemon and mixin work is to view the full [`Node.js SSL Server Example`](https://github.com/FirstTimeEZ/server-ssl)
+You can view the full [`SSL Server Example`](https://github.com/FirstTimeEZ/server-ssl) to understand the `Daemon` and `Mixin`
 
 ### Daemon
+
+The `Daemon` runs periodically to Issue or Renew the certificate
 
 ```javascript
 /**
@@ -27,7 +31,7 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, cert
 
 ### HTTP Mixin
 
-`HTTP` mixin that completes the `HTTP-01` Challenges
+`HTTP Mixin` that completes the `HTTP-01` Challenges created by the `Daemon`
 
 ```javascript
 /**
