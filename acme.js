@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import * as jose from './jose/index.js';
+import * as jose from 'jose';
 import { generateCSRWithExistingKeys } from './crypt/csr.js';
 
 const CONTENT_TYPE = "Content-Type";

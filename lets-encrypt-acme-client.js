@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import * as jose from './jose/index.js';
+import * as jose from 'jose';
 import * as acme from './acme.js';
 import { join } from 'path';
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
