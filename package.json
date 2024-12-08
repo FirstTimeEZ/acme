@@ -1,6 +1,6 @@
 {
   "name": "lets-encrypt-acme-client",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Automatically Issue and Renew Let's Encrypt Certificates by utilizing a Daemon that operates periodically alongside a Mixin to handle challenge completions. (ACMEv2)",
   "main": "lets-encrypt-acme-client.js",
   "type": "module",
@@ -46,7 +46,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/FirstTimeEZ/server-ssl"
+    "url": "git+https://github.com/FirstTimeEZ/server-ssl.git"
   },
   "homepage": "https://github.com/FirstTimeEZ/acme",
   "dependencies": {
