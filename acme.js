@@ -16,7 +16,7 @@
  */
 
 import * as jose from 'jose';
-import { generateCSRWithExistingKeys } from './crypt/csr.js';
+import { generateCSRWithExistingKeys } from 'simple-csr-generator';
 
 const CONTENT_TYPE = "Content-Type";
 
