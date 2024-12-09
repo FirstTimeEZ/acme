@@ -17,8 +17,8 @@
 
 import * as acme from './acme.js';
 import { join } from 'path';
-import { KeyObject, generateKeyPairSync } from 'crypto';
 import { isCryptoKey } from 'util/types';
+import { KeyObject, generateKeyPairSync } from 'crypto';
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 
 const DIRECTORY_PRODUCTION = "https://acme-v02.api.letsencrypt.org/directory";
@@ -38,7 +38,6 @@ const EXPECTED_SPLITS = 4;
 const MAX_LENGTH = 1000;
 const MIN_LENGTH = 32;
 
-const ALG_ECDSA = 'ES256';
 const PUBLIC_KEY = '/acmePublicKey.raw';
 const PRIVATE_KEY = '/acmePrivateKey.raw';
 const PUBLIC_KEY_SIGN = '/acmePublicSignKey.raw';
@@ -357,21 +356,21 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
 
     acmeDirectory = (await acme.newDirectoryAsync(acmeDirectory)).answer.directory;
 
-    if (acmeDirectory === null) {
+    if (acmeDirectory == undefined) {
         console.error("Error getting directory", acmeDirectory.answer.error, acmeDirectory.answer.exception);
         return false;
     }
 
     firstNonce = await acme.newNonceAsync(acmeDirectory.newNonce);
 
-    if (firstNonce.nonce === undefined) {
+    if (firstNonce.nonce == undefined) {
         console.error("Error getting nonce", firstNonce.answer.error, firstNonce.answer.exception);
         return false;
     }
 
     account = await acme.createAccount(firstNonce.nonce, acmeDirectory.newAccount, acmeKeyChain.privateKey, jsonWebKey).catch(console.error);
 
-    if (account.answer.account === null || account.answer.account.status != VALID) {
+    if (account.answer.account == undefined || account.answer.account.status != VALID) {
         console.error("Error creating account", account.answer.error, account.answer.exception);
         return false;
     }

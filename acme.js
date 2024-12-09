@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-import * as jose from 'jose';
-import { createPrivateKey, createPublicKey } from 'crypto';
+import { isCryptoKey } from 'util/types';
+import { createPrivateKey, createPublicKey, createHash, KeyObject, sign, constants } from 'crypto';
 import { generateCSRWithExistingKeys } from 'simple-csr-generator';
 
 const CONTENT_TYPE = "Content-Type";
@@ -71,9 +71,9 @@ export async function newNonceAsync(newNonceUrl) {
 }
 
 export async function createJsonWebKey(publicKey) {
-    const jsonWebKey = await jose.exportJWK(publicKey);
+    const jsonWebKey = (isCryptoKey(publicKey) ? KeyObject.from(publicKey) : publicKey).export({ format: 'jwk' });
 
-    return { key: jsonWebKey, print: await jose.calculateJwkThumbprint(jsonWebKey, DIGEST) };
+    return { key: jsonWebKey, print: base64urlEncode(createHash(DIGEST).update(new TextEncoder().encode(JSON.stringify({ crv: jsonWebKey.crv, kty: jsonWebKey.kty, x: jsonWebKey.x, y: jsonWebKey.y }))).digest()) };
 }
 
 export async function createAccount(nonce, newAccountUrl, privateKey, jsonWebKey) {
@@ -237,9 +237,20 @@ export async function signPayloadJson(payload, protectedHeader, privateKey) {
 }
 
 export async function signPayload(payload, protectedHeader, privateKey) {
-    const jws = new jose.FlattenedSign(new TextEncoder().encode(payload));
-    jws.setProtectedHeader(protectedHeader);
-    return JSON.stringify(await jws.sign(privateKey));
+    const payload64 = base64urlEncode(new TextEncoder().encode(payload));
+    const protected64 = base64urlEncode(new TextEncoder().encode(JSON.stringify(protectedHeader)));
+
+    const jws = {
+        signature: base64urlEncode(sign("sha256", `${protected64}${'.'}${payload64}`, { dsaEncoding: 'ieee-p1363', key: privateKey })),
+        payload: "",
+        protected: protected64
+    };
+
+    if (payload.length > 1) {
+        jws.payload = payload64
+    }
+
+    return JSON.stringify(jws);
 }
 
 export async function fetchRequest(method, url, signedData) {
@@ -260,4 +271,15 @@ export function formatPublicKey(pem) {
 
 export function formatPrivateKey(pem) {
     return createPrivateKey({ key: Buffer.from(pem.replace(/(?:-----(?:BEGIN|END) PRIVATE KEY-----|\s)/g, ''), 'base64'), type: 'pkcs8', format: 'der' });
+}
+
+export function base64urlEncode(input) {
+    const encoder = new TextEncoder();
+    const data = typeof input === 'string' ? encoder.encode(input) : input;
+    const base64 = btoa(String.fromCharCode.apply(null, data));
+
+    return base64
+        .replace(/\+/g, '-')   // Replace + with -
+        .replace(/\//g, '_')   // Replace / with _
+        .replace(/=+$/, '');   // Remove trailing =
 }
