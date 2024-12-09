@@ -274,9 +274,7 @@ export function formatPrivateKey(pem) {
 }
 
 export function base64urlEncode(input) {
-    const encoder = new TextEncoder();
-    const data = typeof input === 'string' ? encoder.encode(input) : input;
-    const base64 = btoa(String.fromCharCode.apply(null, data));
+    const base64 = Buffer.from(typeof input === 'string' ? new TextEncoder().encode(input) : input).toString('base64');
 
     return base64
         .replace(/\+/g, '-')   // Replace + with -
