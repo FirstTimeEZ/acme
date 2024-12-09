@@ -16,6 +16,7 @@
  */
 
 import * as jose from 'jose';
+import { createPrivateKey, createPublicKey } from 'crypto';
 import { generateCSRWithExistingKeys } from 'simple-csr-generator';
 
 const CONTENT_TYPE = "Content-Type";
@@ -141,7 +142,7 @@ export async function createOrder(kid, nonce, privateKey, newOrderUrl, identifie
 
 export async function finalizeOrder(commonName, kid, nonce, privateKey, publicKeySign, privateKeySign, finalizeUrl, dnsNames) {
     try {
-        const payload = { csr: await generateCSRWithExistingKeys(commonName, publicKeySign, privateKeySign, dnsNames, jose) };
+        const payload = { csr: await generateCSRWithExistingKeys(commonName, publicKeySign, privateKeySign, dnsNames) };
 
         const protectedHeader = {
             alg: ALG_ECDSA,
@@ -251,4 +252,12 @@ export async function fetchRequest(method, url, signedData) {
     };
 
     return await fetch(url, request);
+}
+
+export function formatPublicKey(pem) {
+    return createPublicKey({ key: Buffer.from(pem.replace(/(?:-----(?:BEGIN|END) PUBLIC KEY-----|\s)/g, ''), 'base64'), type: 'spki', format: 'der' });
+}
+
+export function formatPrivateKey(pem) {
+    return createPrivateKey({ key: Buffer.from(pem.replace(/(?:-----(?:BEGIN|END) PRIVATE KEY-----|\s)/g, ''), 'base64'), type: 'pkcs8', format: 'der' });
 }

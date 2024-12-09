@@ -15,9 +15,10 @@
  * limitations under the License.
  */
 
-import * as jose from 'jose';
 import * as acme from './acme.js';
 import { join } from 'path';
+import { KeyObject, generateKeyPairSync } from 'crypto';
+import { isCryptoKey } from 'util/types';
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 
 const DIRECTORY_PRODUCTION = "https://acme-v02.api.letsencrypt.org/directory";
@@ -285,16 +286,16 @@ async function internalGetAcmeKeyChain(sslPath) {
         if (existsSync(sslPath + PUBLIC_KEY) && existsSync(sslPath + PRIVATE_KEY)) {
             acmeKeyChain.publicKeyRaw = readFileSync(sslPath + PUBLIC_KEY);
             acmeKeyChain.privateKeyRaw = readFileSync(sslPath + PRIVATE_KEY);
-            acmeKeyChain.publicKey = await jose.importSPKI(acmeKeyChain.publicKeyRaw.toString(), ALG_ECDSA, { extractable: true });
-            acmeKeyChain.privateKey = await jose.importPKCS8(acmeKeyChain.privateKeyRaw.toString(), ALG_ECDSA, { extractable: true });
+            acmeKeyChain.publicKey = acme.formatPublicKey(acmeKeyChain.publicKeyRaw.toString());
+            acmeKeyChain.privateKey = acme.formatPrivateKey(acmeKeyChain.privateKeyRaw.toString());
 
             console.log("Load ACME Keys From File");
 
             if (existsSync(sslPath + PUBLIC_KEY_SIGN) && existsSync(sslPath + PRIVATE_KEY_SIGN)) {
                 acmeKeyChain.publicKeySignRaw = readFileSync(sslPath + PUBLIC_KEY_SIGN);
                 acmeKeyChain.privateKeySignRaw = readFileSync(sslPath + PRIVATE_KEY_SIGN);
-                acmeKeyChain.publicKeySign = await jose.importSPKI(acmeKeyChain.publicKeySignRaw.toString(), ALG_ECDSA, { extractable: true });
-                acmeKeyChain.privateKeySign = await jose.importPKCS8(acmeKeyChain.privateKeySignRaw.toString(), ALG_ECDSA, { extractable: true });
+                acmeKeyChain.publicKeySign = acme.formatPublicKey(acmeKeyChain.publicKeySignRaw.toString());
+                acmeKeyChain.privateKeySign = acme.formatPrivateKey(acmeKeyChain.privateKeySignRaw.toString());
 
                 console.log("Load Signing Keys From File");
             }
@@ -305,11 +306,13 @@ async function internalGetAcmeKeyChain(sslPath) {
             mkdirSync(sslPath, { recursive: true });
 
             if (true) { // Acme Keys
-                const { publicKey, privateKey } = await jose.generateKeyPair(ALG_ECDSA, { extractable: true });
+                const { publicKey, privateKey, } = generateKeyPairSync('ec', { namedCurve: 'P-256', extractable: true });
+
                 acmeKeyChain.publicKey = publicKey;
                 acmeKeyChain.privateKey = privateKey;
-                acmeKeyChain.publicKeyRaw = await jose.exportSPKI(publicKey);
-                acmeKeyChain.privateKeyRaw = await jose.exportPKCS8(privateKey);
+
+                acmeKeyChain.publicKeyRaw = (isCryptoKey(publicKey) ? KeyObject.from(publicKey) : publicKey).export({ format: 'pem', type: 'spki' });
+                acmeKeyChain.privateKeyRaw = (isCryptoKey(privateKey) ? KeyObject.from(privateKey) : privateKey).export({ format: 'pem', type: 'pkcs8' });
 
                 writeFileSync(sslPath + PUBLIC_KEY, acmeKeyChain.publicKeyRaw);
                 writeFileSync(sslPath + PRIVATE_KEY, acmeKeyChain.privateKeyRaw);
@@ -318,12 +321,13 @@ async function internalGetAcmeKeyChain(sslPath) {
             }
 
             if (true) { // Signing Keys
-                const { publicKey, privateKey } = await jose.generateKeyPair(ALG_ECDSA, { extractable: true });
+                const { publicKey, privateKey, } = generateKeyPairSync('ec', { namedCurve: 'P-256', extractable: true });
 
                 acmeKeyChain.publicKeySign = publicKey;
                 acmeKeyChain.privateKeySign = privateKey;
-                acmeKeyChain.publicKeySignRaw = await jose.exportSPKI(publicKey);
-                acmeKeyChain.privateKeySignRaw = await jose.exportPKCS8(privateKey);
+
+                acmeKeyChain.publicKeySignRaw = (isCryptoKey(publicKey) ? KeyObject.from(publicKey) : publicKey).export({ format: 'pem', type: 'spki' });
+                acmeKeyChain.privateKeySignRaw = (isCryptoKey(privateKey) ? KeyObject.from(privateKey) : privateKey).export({ format: 'pem', type: 'pkcs8' });
 
                 writeFileSync(sslPath + PUBLIC_KEY_SIGN, acmeKeyChain.publicKeySignRaw);
                 writeFileSync(sslPath + PRIVATE_KEY_SIGN, acmeKeyChain.privateKeySignRaw);
