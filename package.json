@@ -37,7 +37,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/FirstTimeEZ/server-ssl.git"
+    "url": "git+https://github.com/FirstTimeEZ/acme.git"
   },
-  "homepage": "https://github.com/FirstTimeEZ/acme"
+  "homepage": "https://github.com/FirstTimeEZ/server-ssl"
 }
