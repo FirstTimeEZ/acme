@@ -71,11 +71,11 @@ let attemptWhen = null;
 let startedWhen = null;
 
 /**
- * Starts the Let's Encrypt daemon to manage SSL certificates.
+ * Starts the Let's Encrypt Daemon to Manage the SSL Certificate for the Server
  *
  * @param {array} fqdns - The fully qualified domain name as a SAN ["example.com","www.example.com"]
  * @param {string} sslPath - The path where the public and private keys will be stored/loaded from.
- * @param {boolean} daysRemaining - The number of days left before the certificate expires
+ * @param {boolean} daysRemaining - The number of days left before the certificate expires; remember to reset this in the certificateCallback (currently to 89)
  * @param {function} certificateCallback - callback that can be used to update the certificates if auto restart is disabled
  * @param {boolean} optGenerateAnyway - (optional) True to generate certificates before the 60 days has passed
  * @param {boolean} optStaging - (optional) True to use staging mode instead of production
@@ -500,8 +500,9 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
                     await new Promise((resolve) => {
                         const certI = setInterval(() => {
                             certificateCallback();
-                            clearInterval(certI);
                             internalCheckAnswered();
+                            attemptWhen = null;
+                            clearInterval(certI);
                             resolve();
                         }, 200);
                     });
