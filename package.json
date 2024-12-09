@@ -1,6 +1,6 @@
 {
   "name": "lets-encrypt-acme-client",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "description": "Automatically Issue and Renew Let's Encrypt Certificates by utilizing a Daemon that operates periodically alongside a Mixin to handle challenge completions. (ACMEv2)",
   "main": "lets-encrypt-acme-client.js",
   "type": "module",
