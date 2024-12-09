@@ -17,8 +17,7 @@
 
 import * as acme from './acme.js';
 import { join } from 'path';
-import { isCryptoKey } from 'util/types';
-import { KeyObject, generateKeyPairSync } from 'crypto';
+import { generateKeyPairSync } from 'crypto';
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 
 const DIRECTORY_PRODUCTION = "https://acme-v02.api.letsencrypt.org/directory";
@@ -310,8 +309,8 @@ async function internalGetAcmeKeyChain(sslPath) {
                 acmeKeyChain.publicKey = publicKey;
                 acmeKeyChain.privateKey = privateKey;
 
-                acmeKeyChain.publicKeyRaw = (isCryptoKey(publicKey) ? KeyObject.from(publicKey) : publicKey).export({ format: 'pem', type: 'spki' });
-                acmeKeyChain.privateKeyRaw = (isCryptoKey(privateKey) ? KeyObject.from(privateKey) : privateKey).export({ format: 'pem', type: 'pkcs8' });
+                acmeKeyChain.publicKeyRaw = publicKey.export({ format: 'pem', type: 'spki' });
+                acmeKeyChain.privateKeyRaw = privateKey.export({ format: 'pem', type: 'pkcs8' });
 
                 writeFileSync(sslPath + PUBLIC_KEY, acmeKeyChain.publicKeyRaw);
                 writeFileSync(sslPath + PRIVATE_KEY, acmeKeyChain.privateKeyRaw);
@@ -325,8 +324,8 @@ async function internalGetAcmeKeyChain(sslPath) {
                 acmeKeyChain.publicKeySign = publicKey;
                 acmeKeyChain.privateKeySign = privateKey;
 
-                acmeKeyChain.publicKeySignRaw = (isCryptoKey(publicKey) ? KeyObject.from(publicKey) : publicKey).export({ format: 'pem', type: 'spki' });
-                acmeKeyChain.privateKeySignRaw = (isCryptoKey(privateKey) ? KeyObject.from(privateKey) : privateKey).export({ format: 'pem', type: 'pkcs8' });
+                acmeKeyChain.publicKeySignRaw = publicKey.export({ format: 'pem', type: 'spki' });
+                acmeKeyChain.privateKeySignRaw = privateKey.export({ format: 'pem', type: 'pkcs8' });
 
                 writeFileSync(sslPath + PUBLIC_KEY_SIGN, acmeKeyChain.publicKeySignRaw);
                 writeFileSync(sslPath + PRIVATE_KEY_SIGN, acmeKeyChain.privateKeySignRaw);

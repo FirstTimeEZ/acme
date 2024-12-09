@@ -15,8 +15,7 @@
  * limitations under the License.
  */
 
-import { isCryptoKey } from 'util/types';
-import { createPrivateKey, createPublicKey, createHash, KeyObject, sign, constants } from 'crypto';
+import { createPrivateKey, createPublicKey, createHash, sign } from 'crypto';
 import { generateCSRWithExistingKeys } from 'simple-csr-generator';
 
 const CONTENT_TYPE = "Content-Type";
@@ -71,7 +70,7 @@ export async function newNonceAsync(newNonceUrl) {
 }
 
 export async function createJsonWebKey(publicKey) {
-    const jsonWebKey = (isCryptoKey(publicKey) ? KeyObject.from(publicKey) : publicKey).export({ format: 'jwk' });
+    const jsonWebKey = publicKey.export({ format: 'jwk' });
 
     return { key: jsonWebKey, print: base64urlEncode(createHash(DIGEST).update(new TextEncoder().encode(JSON.stringify({ crv: jsonWebKey.crv, kty: jsonWebKey.kty, x: jsonWebKey.x, y: jsonWebKey.y }))).digest()) };
 }
