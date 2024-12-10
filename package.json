@@ -33,7 +33,8 @@
   ],
   "license": "Apache-2.0",
   "dependencies": {
-    "base-acme-client": "^1.0.4"
+    "base-acme-client": "^1.1.4",
+    "simple-asn1": "^1.0.5"
   },
   "repository": {
     "type": "git",

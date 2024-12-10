@@ -25,6 +25,9 @@ The `Daemon` runs periodically to Issue or Renew the certificate
  * @param {boolean} optAutoRestart - (optional) True to restart after certificates are generated, You don't need to do this but you might want to
  * @param {function} countdownHandler - (optional) paramterless function that will fire every second during the restart count down
  * @param {function} countdownTime - (optional) how long in seconds to countdown before restarting, default 30 seconds
+ * 
+ * @note
+ * You can only start the daemon once for now
  */
 export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, certificateCallback, optGenerateAnyway, optStaging, optAutoRestart, countdownHandler, countdownTime)
 ```

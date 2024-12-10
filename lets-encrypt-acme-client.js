@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+import * as asn1 from 'simple-asn1';
 import * as acme from 'base-acme-client';
 import { join } from 'path';
 import { generateKeyPairSync } from 'crypto';
@@ -70,6 +71,9 @@ let acmeDirectory = DIRECTORY_PRODUCTION;
 let attemptWhen = null;
 let startedWhen = null;
 
+let daemonI = null;
+let suggestedWindow = null;
+
 /**
  * Starts the Let's Encrypt Daemon to Manage the SSL Certificate for the Server
  *
@@ -82,38 +86,68 @@ let startedWhen = null;
  * @param {boolean} optAutoRestart - (optional) True to restart after certificates are generated, You don't need to do this but you might want to
  * @param {function} countdownHandler - (optional) paramterless function that will fire every second during the restart count down
  * @param {function} countdownTime - (optional) how long in seconds to countdown before restarting, default 30 seconds
+ * 
+ * @note
+ * You can only start the daemon once for now
  */
 export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, certificateCallback, optGenerateAnyway, optStaging, optAutoRestart, countdownHandler, countdownTime) {
-    console.log("Starting Lets Encrypt ACME Daemon!");
-    console.log("Copyright © 2024 FirstTimeEZ");
-    console.log("--------");
+    if (daemonI === null) {
+        const randTime = Math.floor(Math.random() * (12300000 - 1000000 + 1)) + 1000000;
 
-    if (internalDetermineRequirement(fqdns, sslPath, daysRemaining) && optGenerateAnyway !== true) {
-        return;
-    }
+        const daemon = async () => {
+            try {
+                console.log("Starting Lets Encrypt ACME Daemon!");
+                console.log("Copyright © 2024 FirstTimeEZ");
+                console.log("--------");
 
-    await internalGetAcmeKeyChain(sslPath);
+                optStaging === true && (acmeDirectory = DIRECTORY_STAGING, console.log("USING THE STAGING SERVER"));
 
-    for (let index = 0; index < 3; index++) {
-        try {
-            const success = await internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optStaging, optAutoRestart, countdownHandler, countdownTime);
+                const dir = await acme.newDirectoryAsync(acmeDirectory);
+                if (dir.answer != undefined) {
+                    acmeDirectory = dir.answer.directory;
+                }
+                else {
+                    console.error("Error getting directory", dir.answer.error, dir.answer.exception);
+                    return;
+                }
 
-            if (success === true) {
-                console.log("Completed Successfully", index + 1);
-                return;
+                await internalFetchSuggest(sslPath, acmeDirectory);
+
+                if (internalDetermineRequirement(fqdns, sslPath, daysRemaining) && optGenerateAnyway !== true) {
+                    return;
+                }
+
+                await internalGetAcmeKeyChain(sslPath);
+
+                for (let index = 0; index < 3; index++) {
+                    try {
+                        const success = await internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optAutoRestart, countdownHandler, countdownTime);
+
+                        if (success === true) {
+                            console.log("Completed Successfully", index + 1);
+                            return;
+                        }
+                        else {
+                            console.log("Something went wrong, trying again", index + 1);
+                        }
+                    } catch {
+                        console.error("Something went wrong, trying again", index + 1);
+                    }
+                }
+
+                console.error("------------------");
+                console.error("Something is preventing the Lets Encrypt Daemon");
+                console.error("from creating or renewing your certificate");
+                console.error("------------------");
+            } catch (exception) {
+                console.log(exception);
             }
-            else {
-                console.log("Something went wrong, trying again", index + 1);
-            }
-        } catch {
-            console.error("Something went wrong, trying again", index + 1);
-        }
-    }
+        };
 
-    console.error("------------------");
-    console.error("Something is preventing the Lets Encrypt Daemon");
-    console.error("from creating or renewing your certificate");
-    console.error("------------------");
+        daemon();
+
+        daemonI = setInterval(daemon, 33200000 + randTime);
+    }
 }
 
 /**
@@ -213,22 +247,41 @@ function internalDetermineRequirement(fqdns, certFilePath, daysRemaining) {
             }
         }
 
-        if (attemptWhen === null) {
-            const sixty = daysRemaining * SIXTY_PERCENT;
-            const thirty = daysRemaining * THIRTY_PERCENT;
-            const attemptDays = sixty + Math.floor(Math.random() * thirty);
-
-            console.log("Will renew certificates in [" + attemptDays + "] days if server doesn't restart");
-
-            ok = attemptDays > 7;
-            attemptWhen = attemptDays;
-
-            startedWhen = new Date().getTime();
+        // Automated Renewal Information Extension
+        if (suggestedWindow != undefined) {
+            const nowUtc = new Date().getTime();
+            const startT = new Date(suggestedWindow.suggestedWindow.start).getTime();
+            const endT = new Date(suggestedWindow.suggestedWindow.end).getTime();
+            if (startT > nowUtc && endT > nowUtc) {
+                console.log("Automated Renewal Information Window", suggestedWindow);
+                ok = false;
+            }
+            else if (startT < nowUtc && endT > nowUtc) {
+                ok = false;
+                console.log("Inside Renewal Window - Generating Certificates", suggestedWindow);
+            }
+            else {
+                console.log("Outside Renewal Window - Generating Certificates", suggestedWindow);
+                ok = false;
+            }
         } else {
-            const timeDiffMilliseconds = new Date().getTime() - startedWhen;
-            const daysSince = Math.floor(timeDiffMilliseconds / ONE_DAY_MILLISECONDS);
+            if (attemptWhen === null) {
+                const sixty = daysRemaining * SIXTY_PERCENT;
+                const thirty = daysRemaining * THIRTY_PERCENT;
+                const attemptDays = sixty + Math.floor(Math.random() * thirty);
 
-            ok = daysSince < attemptWhen;  //TODO: if this fails it will try every 12 hours (ssl.js:196) until it succeeds, should probably improve this but apparently its okay
+                console.log("Will renew certificates in [" + attemptDays + "] days if server doesn't restart");
+
+                ok = attemptDays > 7;
+                attemptWhen = attemptDays;
+
+                startedWhen = new Date().getTime();
+            } else {
+                const timeDiffMilliseconds = new Date().getTime() - startedWhen;
+                const daysSince = Math.floor(timeDiffMilliseconds / ONE_DAY_MILLISECONDS);
+
+                ok = daysSince < attemptWhen;  //TODO: if this fails it will try every 12 hours (ssl.js:196) until it succeeds, should probably improve this but apparently its okay
+            }
         }
     }
 
@@ -342,7 +395,7 @@ async function internalGetAcmeKeyChain(sslPath) {
     }
 }
 
-async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optStaging, optAutoRestart, countdownHandler, countdownTime) {
+async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optAutoRestart, countdownHandler, countdownTime) {
     let domains = [];
     let account = undefined;
     let nextNonce = undefined;
@@ -350,15 +403,6 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
     let authorizations = undefined;
 
     countdownHandler != undefined && (countdownTime == undefined || countdownTime < 30) && (countdownTime = 30);
-
-    optStaging === true && (acmeDirectory = DIRECTORY_STAGING, console.log("USING THE STAGING SERVER"));
-
-    acmeDirectory = (await acme.newDirectoryAsync(acmeDirectory)).answer.directory;
-
-    if (acmeDirectory == undefined) {
-        console.error("Error getting directory", acmeDirectory.answer.error, acmeDirectory.answer.exception);
-        return false;
-    }
 
     firstNonce = await acme.newNonceAsync(acmeDirectory.newNonce);
 
@@ -482,6 +526,8 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
 
                 writeFileSync(join(sslPath, LAST_CERT_FILE), JSON.stringify({ time: Date.now(), names: fqdns }));
 
+                console.log(await internalUpdateSuggestFromText(certificateText, acmeDirectory));
+
                 if (optAutoRestart === true) {
                     console.log("-------");
                     console.log("Auto Restart is Enabled");
@@ -520,4 +566,24 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
 
         resolve(false);
     });
+}
+
+async function internalFetchSuggest(sslPath, acmeDirectory) {
+    const path = join(sslPath, "certificate.pem");
+
+    existsSync(path) && await internalUpdateSuggestFromText(readFileSync(path, "utf8"), acmeDirectory);
+}
+
+async function internalUpdateSuggestFromText(certificateText, acmeDirectory) {
+    try {
+        const certPem = asn1.pemToBuffer(certificateText);
+
+        if (certPem != null) {
+            const window = await acme.fetchSuggestedWindow(acmeDirectory.renewalInfo, asn1.decodeAKI(certPem), asn1.decodeSerialNumber(certPem));
+
+            window != undefined && (suggestedWindow = window);
+
+            return suggestedWindow;
+        }
+    } catch { }
 }
