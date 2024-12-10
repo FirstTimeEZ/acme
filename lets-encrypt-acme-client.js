@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import * as acme from './acme.js';
+import * as acme from 'base-acme-client';
 import { join } from 'path';
 import { generateKeyPairSync } from 'crypto';
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
