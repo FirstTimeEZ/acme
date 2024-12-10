@@ -254,7 +254,7 @@ function internalDetermineRequirement(fqdns, certFilePath, daysRemaining) {
             const endT = new Date(suggestedWindow.suggestedWindow.end).getTime();
             if (startT > nowUtc && endT > nowUtc) {
                 console.log("Automated Renewal Information Window", suggestedWindow);
-                ok = false;
+                ok = true;
             }
             else if (startT < nowUtc && endT > nowUtc) {
                 ok = false;
