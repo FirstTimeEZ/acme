@@ -526,7 +526,7 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
 
                 writeFileSync(join(sslPath, LAST_CERT_FILE), JSON.stringify({ time: Date.now(), names: fqdns }));
 
-                console.log(await internalUpdateSuggestFromText(certificateText, acmeDirectory));
+                setTimeout(async () => { console.log(await internalUpdateSuggestFromText(certificateText, acmeDirectory)); }, 5000);
 
                 if (optAutoRestart === true) {
                     console.log("-------");
@@ -579,7 +579,7 @@ async function internalUpdateSuggestFromText(certificateText, acmeDirectory) {
         const certPem = asn1.pemToBuffer(certificateText);
 
         if (certPem != null) {
-            const window = await acme.fetchSuggestedWindow(acmeDirectory.renewalInfo, asn1.decodeAKI(certPem), asn1.decodeSerialNumber(certPem));
+            const window = await acme.fetchSuggestedWindow(acmeDirectory.renewalInfo, await asn1.decodeAKI(certPem), await asn1.decodeSerialNumber(certPem));
 
             window != undefined && (suggestedWindow = window);
 
