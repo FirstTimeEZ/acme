@@ -94,6 +94,8 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, cert
     if (daemonI === null) {
         const randTime = Math.floor(Math.random() * (12300000 - 1000000 + 1)) + 1000000;
 
+        sslPath = join(sslPath, optStaging ? "staging" : "production");
+
         const daemon = async () => {
             try {
                 console.log("Starting Lets Encrypt ACME Daemon!");
