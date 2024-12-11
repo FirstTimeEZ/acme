@@ -113,7 +113,7 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, cert
 
                 await internalFetchSuggest(sslPath, acmeDirectory);
 
-                if (internalDetermineRequirement(fqdns, sslPath, daysRemaining) && optGenerateAnyway !== true) {
+                if (internalDetermineRequirement(fqdns, sslPath, daysRemaining, optStaging) && optGenerateAnyway !== true) {
                     return;
                 }
 
@@ -121,7 +121,7 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, cert
 
                 for (let index = 0; index < 3; index++) {
                     try {
-                        const success = await internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optAutoRestart, countdownHandler, countdownTime);
+                        const success = await internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optAutoRestart, countdownHandler, countdownTime, optStaging);
 
                         if (success === true) {
                             console.log("Completed Successfully", index + 1);
@@ -220,7 +220,7 @@ function internalCheckForLocalHostOnce(req) {
     return false;
 }
 
-function internalDetermineRequirement(fqdns, certFilePath, daysRemaining) {
+function internalDetermineRequirement(fqdns, certFilePath, daysRemaining, optStaging) {
     const certFile = join(certFilePath, LAST_CERT_FILE);
     let ok = false;
 
@@ -235,6 +235,11 @@ function internalDetermineRequirement(fqdns, certFilePath, daysRemaining) {
 
                 if (last.names instanceof Array) {
                     if (fqdns.length !== last.names.length) {
+                        return ok;
+                    }
+
+                    if (last.staging !== optStaging) {
+                        console.log("The certificate you were using was generated for a different configuration");
                         return ok;
                     }
 
@@ -395,7 +400,7 @@ async function internalGetAcmeKeyChain(sslPath) {
     }
 }
 
-async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optAutoRestart, countdownHandler, countdownTime) {
+async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optAutoRestart, countdownHandler, countdownTime, optStaging) {
     let domains = [];
     let account = undefined;
     let nextNonce = undefined;
@@ -524,7 +529,7 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
 
                 writeFileSync(join(sslPath, "private-key.pem"), acmeKeyChain.privateKeySignRaw);
 
-                writeFileSync(join(sslPath, LAST_CERT_FILE), JSON.stringify({ time: Date.now(), names: fqdns }));
+                writeFileSync(join(sslPath, LAST_CERT_FILE), JSON.stringify({ time: Date.now(), names: fqdns, staging: optStaging }));
 
                 setTimeout(async () => { console.log(await internalUpdateSuggestFromText(certificateText, acmeDirectory)); }, 5000);
 
