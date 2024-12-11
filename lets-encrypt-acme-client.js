@@ -579,11 +579,23 @@ async function internalUpdateSuggestFromText(certificateText, acmeDirectory) {
         const certPem = asn1.pemToBuffer(certificateText);
 
         if (certPem != null) {
-            const window = await acme.fetchSuggestedWindow(acmeDirectory.renewalInfo, await asn1.decodeAKI(certPem), await asn1.decodeSerialNumber(certPem));
+            const a = await asn1.decodeAKI(certPem);
+            const s = await asn1.decodeSerialNumber(certPem);
+
+            if (a == undefined || s == undefined) {
+                return undefined;
+            }
+
+            const window = await acme.fetchSuggestedWindow(acmeDirectory.renewalInfo, a, s);
 
             window != undefined && (suggestedWindow = window);
 
             return suggestedWindow;
         }
-    } catch { }
+        else {
+            console.error("Certificate was null, you should report this as an issue");
+        }
+    } catch (exception) {
+        console.error(exception);
+    }
 }
