@@ -103,7 +103,7 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, cert
                 console.log("Copyright © 2024 FirstTimeEZ");
                 console.log("--------");
 
-                await internalUpdateDirectory(acmeDirectoryURL);
+                await internalUpdateDirectory();
 
                 await internalFetchSuggest(sslPath, acmeDirectory);
 
