@@ -103,7 +103,9 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, cert
                 console.log("Copyright © 2024 FirstTimeEZ");
                 console.log("--------");
 
-                await internalUpdateDirectory();
+                if (await internalUpdateDirectory()) {
+                    return;
+                }
 
                 await internalFetchSuggest(sslPath, acmeDirectory);
 
@@ -316,14 +318,17 @@ async function internalUpdateDirectory() {
                 acmeDirectory = dir.answer.directory;
             }
             else {
-                console.error("Failed to get directory, trying again later");
-                return;
+                console.error("Failed to get directory after multiple attempts, trying again later");
+
+                return true;
             }
         }
         else {
             console.log("Error updating directory, trying to use the old copy", dir.answer.error, dir.answer.exception);
         }
     }
+
+    return false;
 }
 
 async function internalCheckAnswered() {
