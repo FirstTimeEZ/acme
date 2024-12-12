@@ -67,6 +67,7 @@ let jsonWebKey = undefined;
 let jsonWebKeyThumbPrint = null;
 
 let acmeDirectory = DIRECTORY_PRODUCTION;
+let acmeDirectoryURL = DIRECTORY_PRODUCTION;
 
 let attemptWhen = null;
 let startedWhen = null;
@@ -100,10 +101,10 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, cert
                 console.log("Copyright © 2024 FirstTimeEZ");
                 console.log("--------");
 
-                optStaging === true && (acmeDirectory = DIRECTORY_STAGING, console.log("USING THE STAGING SERVER"));
+                optStaging === true && (acmeDirectoryURL = DIRECTORY_STAGING, console.log("USING THE STAGING SERVER"));
 
-                const dir = await acme.newDirectoryAsync(acmeDirectory);
-                if (dir.answer != undefined) {
+                const dir = await acme.newDirectoryAsync(acmeDirectoryURL);
+                if (dir.answer.directory != undefined) {
                     acmeDirectory = dir.answer.directory;
                 }
                 else {
