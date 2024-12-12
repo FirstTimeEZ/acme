@@ -66,7 +66,7 @@ let acmeKeyChain = undefined;
 let jsonWebKey = undefined;
 let jsonWebKeyThumbPrint = null;
 
-let acmeDirectory = DIRECTORY_PRODUCTION;
+let acmeDirectory = null;
 let acmeDirectoryURL = DIRECTORY_PRODUCTION;
 
 let attemptWhen = null;
@@ -95,22 +95,15 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, cert
     if (daemonI === null) {
         const randTime = Math.floor(Math.random() * (12300000 - 1000000 + 1)) + 1000000;
 
+        optStaging === true && (acmeDirectoryURL = DIRECTORY_STAGING, console.log("USING THE STAGING SERVER"));
+
         const daemon = async () => {
             try {
                 console.log("Starting Lets Encrypt ACME Daemon!");
                 console.log("Copyright © 2024 FirstTimeEZ");
                 console.log("--------");
 
-                optStaging === true && (acmeDirectoryURL = DIRECTORY_STAGING, console.log("USING THE STAGING SERVER"));
-
-                const dir = await acme.newDirectoryAsync(acmeDirectoryURL);
-                if (dir.answer.directory != undefined) {
-                    acmeDirectory = dir.answer.directory;
-                }
-                else {
-                    console.error("Error getting directory", dir.answer.error, dir.answer.exception);
-                    return;
-                }
+                await internalUpdateDirectory(acmeDirectoryURL);
 
                 await internalFetchSuggest(sslPath, acmeDirectory);
 
@@ -307,6 +300,30 @@ function internalCheckChallenges() {
     }
 
     return true;
+}
+
+async function internalUpdateDirectory() {
+    const dir = await acme.newDirectoryAsync(acmeDirectoryURL);
+    if (dir.answer.directory != undefined) {
+        acmeDirectory = dir.answer.directory;
+    }
+    else {
+        if (acmeDirectory === null) {
+            console.error("Error getting directory first time", dir.answer.error, dir.answer.exception);
+
+            const dir = await acme.newDirectoryAsync(acmeDirectoryURL);
+            if (dir.answer.directory != undefined) {
+                acmeDirectory = dir.answer.directory;
+            }
+            else {
+                console.error("Failed to get directory, trying again later");
+                return;
+            }
+        }
+        else {
+            console.log("Error updating directory, trying to use the old copy", dir.answer.error, dir.answer.exception);
+        }
+    }
 }
 
 async function internalCheckAnswered() {
