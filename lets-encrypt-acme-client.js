@@ -343,7 +343,7 @@ async function internalCheckAnswered() {
             if (pendingChallenges[index].answered === false) {
                 const response = await fetchAndRetyUntilOk(element.url);
 
-                if (response.ok) {
+                if (response && response.ok) {
                     const record = await response.json();
                     if (record.status === VALID) {
                         console.log(record);
@@ -544,7 +544,7 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
 
         const response = await fetchAndRetyUntilOk(finalizedCertificateLocation);
 
-        if (response.ok) {
+        if (response && response.ok) {
             const certificateText = await response.text();
 
             if (checkCertificateTextValid(certificateText) && checkPrivateKeyValid(acmeKeyChain.privateKeySignRaw.toString())) {
@@ -640,13 +640,19 @@ async function fetchAndRetyUntilOk(fetchInput, attempts = 6) {
                 return response;
             }
 
+            a++;
+
+            if (a > attempts) {
+                return response;
+            }
+
             await new Promise((resolve) => setTimeout(() => { resolve(); }, 650 * a)); // Each failed attempt will delay itself slightly more
         } catch (exception) {
             console.log(exception);
         }
-
-        a++;
     }
+
+    return undefined;
 }
 
 function checkCertificateTextValid(certificateText) {
