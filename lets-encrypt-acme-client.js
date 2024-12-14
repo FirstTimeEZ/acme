@@ -21,6 +21,8 @@ import { join } from 'path';
 import { generateKeyPairSync } from 'crypto';
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 
+const packageJson = await import('./package.json', { with: { type: 'json' } });
+
 const DIRECTORY_PRODUCTION = "https://acme-v02.api.letsencrypt.org/directory";
 const DIRECTORY_STAGING = "https://acme-staging-v02.api.letsencrypt.org/directory";
 const WELL_KNOWN = "/.well-known/acme-challenge/";
@@ -99,8 +101,8 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, cert
 
         const daemon = async () => {
             try {
-                console.log("Starting Lets Encrypt ACME Daemon!");
-                console.log("Copyright © 2024 FirstTimeEZ");
+                console.log("Starting Lets Encrypt ACME Daemon!", "v" + packageJson.default.version);
+                console.log("Copyright © 2024 " + packageJson.default.author);
                 console.log("--------");
 
                 if (await internalUpdateDirectory()) {
@@ -339,7 +341,9 @@ async function internalCheckAnswered() {
             const element = pendingChallenges[index];
 
             if (pendingChallenges[index].answered === false) {
-                await fetch(element.url).then(async (response) => {
+                const response = await fetchAndRetyUntilOk(element.url);
+
+                if (response.ok) {
                     const record = await response.json();
                     if (record.status === VALID) {
                         console.log(record);
@@ -348,7 +352,7 @@ async function internalCheckAnswered() {
                     else if (record.status === 404) {
                         pendingChallenges[index].answered = true;
                     }
-                });
+                }
             }
         }
 
@@ -538,14 +542,12 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
             }, 1500);
         });
 
-        const response = await fetch(finalizedCertificateLocation);
+        const response = await fetchAndRetyUntilOk(finalizedCertificateLocation);
 
-        const certificateText = await response.text();
+        if (response.ok) {
+            const certificateText = await response.text();
 
-        if (certificateText.startsWith("-----BEGIN CERTIFICATE-----") && (certificateText.endsWith("-----END CERTIFICATE-----\n") || certificateText.endsWith("-----END CERTIFICATE-----") || certificateText.endsWith("-----END CERTIFICATE----- "))) {
-            const pks = acmeKeyChain.privateKeySignRaw.toString();
-
-            if (pks.startsWith("-----BEGIN PRIVATE KEY-----") && (pks.endsWith("-----END PRIVATE KEY-----") || pks.endsWith("-----END PRIVATE KEY-----\n") || pks.endsWith("-----END PRIVATE KEY----- "))) {
+            if (checkCertificateTextValid(certificateText) && checkPrivateKeyValid(acmeKeyChain.privateKeySignRaw.toString())) {
                 console.log("Certificate Downloaded, Saving to file");
 
                 writeFileSync(join(sslPath, "certificate.pem"), certificateText);
@@ -585,11 +587,10 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
                 resolve(true);
             }
             else {
-                console.error("Something went wrong with the private key, will try again at the usual time"); // todo: generate a new acme key the usual way before the next update
+                console.error("Something went wrong generating the certificate or the private key, will try again at the usual time");
             }
-        }
-        else {
-            console.error("Something went wrong generating the certificate, will try again at the usual time"); // todo: try download the cert again
+        } else {
+            console.error("Something went wrong fetching the certificate, will try again at the usual time"); // todo: try again sooner / check time
         }
 
         resolve(false);
@@ -626,4 +627,32 @@ async function internalUpdateSuggestFromText(certificateText, acmeDirectory) {
     } catch (exception) {
         console.error(exception);
     }
+}
+
+async function fetchAndRetyUntilOk(fetchInput, attempts = 6) {
+    let a = 1;
+
+    while (a <= attempts) {
+        try {
+            const response = await fetch(fetchInput);
+
+            if (response.ok) {
+                return response;
+            }
+
+            await new Promise((resolve) => setTimeout(() => { resolve(); }, 650 * a)); // Each failed attempt will delay itself slightly more
+        } catch (exception) {
+            console.log(exception);
+        }
+
+        a++;
+    }
+}
+
+function checkCertificateTextValid(certificateText) {
+    return certificateText.startsWith("-----BEGIN CERTIFICATE-----") && (certificateText.endsWith("-----END CERTIFICATE-----\n") || certificateText.endsWith("-----END CERTIFICATE-----") || certificateText.endsWith("-----END CERTIFICATE----- "));
+}
+
+function checkPrivateKeyValid(privateKey) {
+    return privateKey.startsWith("-----BEGIN PRIVATE KEY-----") && (privateKey.endsWith("-----END PRIVATE KEY-----") || privateKey.endsWith("-----END PRIVATE KEY-----\n") || privateKey.endsWith("-----END PRIVATE KEY----- "))
 }
