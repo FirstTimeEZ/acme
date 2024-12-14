@@ -633,14 +633,13 @@ async function fetchAndRetyUntilOk(fetchInput, attempts = 6) {
     let a = 1;
 
     while (a <= attempts) {
+        a++;
         try {
             const response = await fetch(fetchInput);
 
             if (response.ok) {
                 return response;
             }
-
-            a++;
 
             if (a > attempts) {
                 return response;
