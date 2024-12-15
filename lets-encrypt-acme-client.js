@@ -117,7 +117,7 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, cert
 
                 await internalGetAcmeKeyChain(sslPath);
 
-                for (let index = 0; index < 3; index++) {
+                for (let index = 0; index <= 3; index++) {
                     try {
                         const success = await internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optAutoRestart, countdownHandler, countdownTime, optStaging);
 
@@ -126,7 +126,7 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, cert
                             return;
                         }
                         else {
-                            console.log("Something went wrong, trying again", index + 1);
+                            index + 1 <= 3 && console.log("Something went wrong, trying again", index + 1);
                         }
                     } catch {
                         console.error("Something went wrong, trying again", index + 1);
@@ -443,7 +443,7 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
         return false;
     }
 
-    account = await acme.createAccount(firstNonce.nonce, acmeDirectory.newAccount, acmeKeyChain.privateKey, jsonWebKey).catch(console.error);
+    account = await acme.createAccount(firstNonce.nonce, acmeKeyChain.privateKey, jsonWebKey, acmeDirectory).catch(console.error);
 
     if (account.answer.account == undefined || account.answer.account.status != VALID) {
         console.error("Error creating account", account.answer.error, account.answer.exception);
@@ -452,7 +452,7 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
 
     fqdns.forEach((element) => domains.push({ "type": "dns", "value": element }));
 
-    const order = await acme.createOrder(account.answer.location, account.nonce, acmeKeyChain.privateKey, acmeDirectory.newOrder, domains);
+    const order = await acme.createOrder(account.answer.location, account.nonce, acmeKeyChain.privateKey, domains, acmeDirectory);
 
     if (order.answer.order == undefined) {
         console.error("Error getting order", order.answer.error, order.answer.exception);
@@ -464,7 +464,7 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
     authorizations = order.answer.order.authorizations;
 
     for (let index = 0; index < authorizations.length; index++) {
-        const auth = await acme.postAsGet(account.answer.location, nextNonce, acmeKeyChain.privateKey, authorizations[index]);
+        const auth = await acme.postAsGet(account.answer.location, nextNonce, acmeKeyChain.privateKey, authorizations[index], acmeDirectory);
 
         if (auth.answer.get.status) {
             for (let index = 0; index < auth.answer.get.challenges.length; index++) {
@@ -480,7 +480,7 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
 
     for (let index = 0; index < pendingChallenges.length; index++) {
         if (pendingChallenges[index].type == HTTP && pendingChallenges[index].status == STATUS_PENDING) {
-            const auth = await acme.postAsGetChal(account.answer.location, nextNonce, acmeKeyChain.privateKey, pendingChallenges[index].url);
+            const auth = await acme.postAsGetChal(account.answer.location, nextNonce, acmeKeyChain.privateKey, pendingChallenges[index].url, acmeDirectory);
             auth.answer.get.status ? console.log("Next Nonce", (nextNonce = auth.nonce), auth) : console.error("Error getting auth", auth.answer.error, auth.answer.exception);
         }
     }
@@ -492,7 +492,7 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
 
         await new Promise(async (resolve) => {
             const waitForReady = setInterval(async () => {
-                await acme.postAsGet(account.answer.location, nextNonce, acmeKeyChain.privateKey, order.answer.location).then((order) => {
+                await acme.postAsGet(account.answer.location, nextNonce, acmeKeyChain.privateKey, order.answer.location, acmeDirectory).then((order) => {
                     nextNonce = order.nonce;
 
                     if (order.answer.get != undefined && order.answer.get.status == "ready") {
@@ -507,7 +507,7 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
 
         await new Promise(async (resolve) => {
             const waitForFinalize = setInterval(async () => {
-                await acme.finalizeOrder(fqdns[0], account.answer.location, nextNonce, acmeKeyChain.privateKey, acmeKeyChain.publicKeySign, acmeKeyChain.privateKeySign, finalizedInfo, fqdns).then((finalized) => {
+                await acme.finalizeOrder(fqdns[0], account.answer.location, nextNonce, acmeKeyChain.privateKey, acmeKeyChain.publicKeySign, acmeKeyChain.privateKeySign, finalizedInfo, fqdns, acmeDirectory).then((finalized) => {
                     if (finalized.answer.get) {
                         if (finalized.answer.get.status == "processing" || finalized.answer.get.status == VALID) {
                             finalizedLocation = finalized.answer.location;
@@ -529,7 +529,7 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
 
         await new Promise(async (resolve) => {
             const waitForProcessingValid = setInterval(async () => {
-                await acme.postAsGet(account.answer.location, nextNonce, acmeKeyChain.privateKey, finalizedLocation).then((checkFinalized) => {
+                await acme.postAsGet(account.answer.location, nextNonce, acmeKeyChain.privateKey, finalizedLocation, acmeDirectory).then((checkFinalized) => {
                     if (checkFinalized.answer.get != undefined && checkFinalized.answer.get.status == VALID) {
                         finalizedCertificateLocation = checkFinalized.answer.get.certificate;
                         console.log("Certificate URL:", finalizedCertificateLocation);
