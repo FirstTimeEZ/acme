@@ -341,7 +341,7 @@ async function internalCheckAnswered() {
             const element = pendingChallenges[index];
 
             if (pendingChallenges[index].answered === false) {
-                const response = await fetchAndRetyUntilOk(element.url);
+                const response = await acme.fetchAndRetryUntilOk(element.url);
 
                 if (response && response.ok) {
                     const record = await response.json();
@@ -542,7 +542,7 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
             }, 1500);
         });
 
-        const response = await fetchAndRetyUntilOk(finalizedCertificateLocation);
+        const response = await acme.fetchAndRetryUntilOk(finalizedCertificateLocation);
 
         if (response && response.ok) {
             const certificateText = await response.text();
@@ -627,31 +627,6 @@ async function internalUpdateSuggestFromText(certificateText, acmeDirectory) {
     } catch (exception) {
         console.error(exception);
     }
-}
-
-async function fetchAndRetyUntilOk(fetchInput, attempts = 6) {
-    let a = 1;
-
-    while (a <= attempts) {
-        a++;
-        try {
-            const response = await fetch(fetchInput);
-
-            if (response.ok) {
-                return response;
-            }
-
-            if (a > attempts) {
-                return response;
-            }
-
-            await new Promise((resolve) => setTimeout(() => { resolve(); }, 650 * a)); // Each failed attempt will delay itself slightly more
-        } catch (exception) {
-            console.log(exception);
-        }
-    }
-
-    return undefined;
 }
 
 function checkCertificateTextValid(certificateText) {
