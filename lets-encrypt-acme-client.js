@@ -52,9 +52,6 @@ const VALID = "valid";
 const REDIRECT_ONLY = "Cleared Answered Challenges - HTTP is now redirect only until new challenges are created";
 
 const ONE_SECOND_MS = 1000;
-const SIXTY_PERCENT = 0.60;
-const THIRTY_PERCENT = 0.30;
-const ONE_DAY_MILLISECONDS = 86400000;
 const CHECK_CLOSE_TIME = 65000;
 
 let pendingChallenges = [];
@@ -71,11 +68,8 @@ let jsonWebKeyThumbPrint = null;
 let acmeDirectory = null;
 let acmeDirectoryURL = DIRECTORY_PRODUCTION;
 
-let attemptWhen = null;
-let startedWhen = null;
-
 let daemonI = null;
-let suggestedWindow = null;
+let ariWindow = null;
 
 /**
  * Starts the Let's Encrypt Daemon to Manage the SSL Certificate for the Server
@@ -108,6 +102,8 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, cert
                 if (await internalUpdateDirectory()) {
                     return;
                 }
+
+                console.log("Determining if its time to issue a new SSL Certificate");
 
                 await internalFetchSuggest(sslPath, acmeDirectory);
 
@@ -226,26 +222,26 @@ function internalDetermineRequirement(fqdns, certFilePath, daysRemaining, optSta
     let ok = false;
 
     if (existsSync(certFile)) {
-        const time = readFileSync(certFile);
+        const identifierBased = readFileSync(certFile);
 
-        if (time != undefined) {
-            const last = JSON.parse(time);
+        if (identifierBased != undefined) {
+            const lastIdentifiers = JSON.parse(identifierBased);
 
-            if (last != undefined) {
-                last.time != undefined && console.log("It has been: " + ((Date.now() - last.time) / ONE_SECOND_MS) + " seconds since you last generated certificates");
+            if (lastIdentifiers != undefined) {
+                lastIdentifiers.time != undefined && console.log("It has been: " + ((Date.now() - lastIdentifiers.time) / ONE_SECOND_MS) + " seconds since you last generated certificates");
 
-                if (last.names instanceof Array) {
-                    if (fqdns.length !== last.names.length) {
+                if (lastIdentifiers.names instanceof Array) {
+                    if (fqdns.length !== lastIdentifiers.names.length) {
                         return ok;
                     }
 
-                    if (last.staging !== optStaging) {
+                    if (lastIdentifiers.staging !== optStaging) {
                         console.log("The certificate you were using was generated for a different configuration");
                         return ok;
                     }
 
-                    for (let index = 0; index < last.names.length; index++) {
-                        if (fqdns[index] != last.names[index]) {
+                    for (let index = 0; index < lastIdentifiers.names.length; index++) {
+                        if (fqdns[index] != lastIdentifiers.names[index]) {
                             return ok;
                         }
                     }
@@ -253,42 +249,26 @@ function internalDetermineRequirement(fqdns, certFilePath, daysRemaining, optSta
             }
         }
 
-        // Automated Renewal Information Extension
-        if (suggestedWindow != undefined) {
+        if (ariWindow != undefined) {
             const nowUtc = new Date().getTime();
-            const startT = new Date(suggestedWindow.suggestedWindow.start).getTime();
-            const endT = new Date(suggestedWindow.suggestedWindow.end).getTime();
+            const startT = new Date(ariWindow.start).getTime();
+            const endT = new Date(ariWindow.end).getTime();
+
             if (startT > nowUtc && endT > nowUtc) {
-                console.log("Automated Renewal Information Window", suggestedWindow);
+                console.log("Automated Renewal Information Window", ariWindow);
                 ok = true;
             }
             else if (startT < nowUtc && endT > nowUtc) {
                 ok = false;
-                console.log("Inside Renewal Window - Generating Certificates", suggestedWindow);
+                console.log("Inside Renewal Window - Generating Certificates", ariWindow);
             }
             else {
-                console.log("Outside Renewal Window - Generating Certificates", suggestedWindow);
+                console.log("Outside Renewal Window - Generating Certificates", ariWindow);
                 ok = false;
             }
-        } else {
-            if (attemptWhen === null) {
-                const sixty = daysRemaining * SIXTY_PERCENT;
-                const thirty = daysRemaining * THIRTY_PERCENT;
-                const attemptDays = sixty + Math.floor(Math.random() * thirty);
-
-                console.log("Will renew certificates in [" + attemptDays + "] days if server doesn't restart");
-
-                ok = attemptDays > 7;
-                attemptWhen = attemptDays;
-
-                startedWhen = new Date().getTime();
-            } else {
-                const timeDiffMilliseconds = new Date().getTime() - startedWhen;
-                const daysSince = Math.floor(timeDiffMilliseconds / ONE_DAY_MILLISECONDS);
-
-                ok = daysSince < attemptWhen;  //TODO: if this fails it will try every 12 hours (ssl.js:196) until it succeeds, should probably improve this but apparently its okay
-            }
         }
+
+        //todo: rework/re-add daysRemaining based window
     }
 
     return ok;
@@ -310,15 +290,17 @@ function internalCheckChallenges() {
 }
 
 async function internalUpdateDirectory() {
-    const dir = await acme.newDirectoryAsync(acmeDirectoryURL);
+    const dir = await acme.newDirectory(acmeDirectoryURL);
+
     if (dir.answer.directory != undefined) {
         acmeDirectory = dir.answer.directory;
     }
     else {
         if (acmeDirectory === null) {
-            console.error("Error getting directory first time", dir.answer.error, dir.answer.exception);
+            console.error("Error getting directory first time", dir.answer.error);
 
-            const dir = await acme.newDirectoryAsync(acmeDirectoryURL);
+            const dir = await acme.newDirectory(acmeDirectoryURL);
+
             if (dir.answer.directory != undefined) {
                 acmeDirectory = dir.answer.directory;
             }
@@ -329,7 +311,7 @@ async function internalUpdateDirectory() {
             }
         }
         else {
-            console.log("Error updating directory, trying to use the old copy", dir.answer.error, dir.answer.exception);
+            console.log("Error updating directory, trying to use the old copy", dir.answer.error);
         }
     }
 
@@ -348,8 +330,10 @@ async function internalCheckAnswered() {
 
                 if (response && response.ok) {
                     const record = await response.json();
+
                     if (record.status === VALID) {
-                        console.log(record);
+                        // console.log("HTTP-01 ACME Challenge Token", record.token);
+
                         pendingChallenges[index].answered = true;
                     }
                     else if (record.status === 404) {
@@ -439,17 +423,17 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
 
     countdownHandler != undefined && (countdownTime == undefined || countdownTime < 30) && (countdownTime = 30);
 
-    firstNonce = await acme.newNonceAsync(acmeDirectory.newNonce);
+    firstNonce = await acme.newNonce(acmeDirectory.newNonce);
 
     if (firstNonce.nonce == undefined) {
-        console.error("Error getting nonce", firstNonce.answer.error, firstNonce.answer.exception);
+        console.error("Error getting nonce", firstNonce.answer.error);
         return false;
     }
 
     account = await acme.createAccount(firstNonce.nonce, acmeKeyChain.privateKey, jsonWebKey, acmeDirectory).catch(console.error);
 
     if (account.answer.account == undefined || account.answer.account.status != VALID) {
-        console.error("Error creating account", account.answer.error, account.answer.exception);
+        console.error("Error creating account", account.answer.error);
         return false;
     }
 
@@ -458,7 +442,7 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
     const order = await acme.createOrder(account.answer.location, account.nonce, acmeKeyChain.privateKey, domains, acmeDirectory);
 
     if (order.answer.order == undefined) {
-        console.error("Error getting order", order.answer.error, order.answer.exception);
+        console.error("Error getting order", order.answer.error);
         return false;
     }
 
@@ -477,14 +461,14 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
 
             console.log("Next Nonce", (nextNonce = auth.nonce));
         } else {
-            console.error("Error getting auth", auth.answer.error, auth.answer.exception);
+            console.error("Error getting auth", auth.answer.error);
         }
     }
 
     for (let index = 0; index < pendingChallenges.length; index++) {
         if (pendingChallenges[index].type == HTTP && pendingChallenges[index].status == STATUS_PENDING) {
             const auth = await acme.postAsGetChal(account.answer.location, nextNonce, acmeKeyChain.privateKey, pendingChallenges[index].url, acmeDirectory);
-            auth.answer.get.status ? console.log("Next Nonce", (nextNonce = auth.nonce), auth) : console.error("Error getting auth", auth.answer.error, auth.answer.exception);
+            auth.answer.get.status ? console.log("Next Nonce", (nextNonce = auth.nonce), "Authed Challenge") : console.error("Error getting auth", auth.answer.error);
         }
     }
 
@@ -520,7 +504,7 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
                         }
                     }
                     else {
-                        console.error("Error getting order", finalized.answer.error, finalized.answer.exception);
+                        console.error("Error getting order", finalized.answer.error);
                     }
 
                     console.log("Next Nonce", (nextNonce = finalized.nonce));
@@ -580,7 +564,6 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
                         const certI = setInterval(() => {
                             certificateCallback();
                             internalCheckAnswered();
-                            attemptWhen = null;
                             clearInterval(certI);
                             resolve();
                         }, 200);
@@ -620,9 +603,9 @@ async function internalUpdateSuggestFromText(certificateText, acmeDirectory) {
 
             const window = await acme.fetchSuggestedWindow(acmeDirectory.renewalInfo, a, s);
 
-            window != undefined && (suggestedWindow = window);
+            window.answer.get != undefined && (ariWindow = window.answer.get.suggestedWindow);
 
-            return suggestedWindow;
+            return ariWindow;
         }
         else {
             console.error("Certificate was null, you should report this as an issue");
