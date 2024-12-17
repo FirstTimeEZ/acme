@@ -72,7 +72,7 @@ let acmeDirectoryURL = DIRECTORY_PRODUCTION;
 let daemonI = null;
 let ariWindow = null;
 
-let remaining = { days: null, hours: null, minutes: null }
+let remaining = { days: null, hours: null, minutes: null };
 
 /**
  * Starts the Let's Encrypt Daemon to Manage the SSL Certificate for the Server
@@ -267,7 +267,7 @@ function internalDetermineRequirement(fqdns, certFilePath, optStaging) {
             }
         }
 
-        remaining.days === null && getExpireDateFromCertificate(join(certFilePath, "certificate.pem"));
+        getExpireDateFromCertificate(join(certFilePath, "certificate.pem"));
         remaining.days && console.log(remaining.message);
     }
 
@@ -628,4 +628,6 @@ function getExpireDateFromCertificate(__certPath) {
             console.log(exception); // Not a date
         }
     }
+
+    remaining = { days: null, hours: null, minutes: null };
 }
