@@ -16,20 +16,16 @@ The `Daemon` runs periodically to Issue or Renew the certificate
 /**
  * Starts the Let's Encrypt Daemon to Manage the SSL Certificate for the Server
  *
- * @param {array} fqdns - The fully qualified domain name as a SAN ["example.com","www.example.com"]
+ * @param {Array<string>} fqdns - The fully qualified domain names as a SAN (e.g., ["example.com", "www.example.com"]).
  * @param {string} sslPath - The path where the public and private keys will be stored/loaded from.
- * @param {boolean} daysRemaining - The number of days left before the certificate expires; remember to reset this in the certificateCallback (currently to 89)
- * @param {function} certificateCallback - callback that can be used to update the certificates if auto restart is disabled
- * @param {boolean} optGenerateAnyway - (optional) True to generate certificates before the 60 days has passed
- * @param {boolean} optStaging - (optional) True to use staging mode instead of production
- * @param {boolean} optAutoRestart - (optional) True to restart after certificates are generated, You don't need to do this but you might want to
- * @param {function} countdownHandler - (optional) paramterless function that will fire every second during the restart count down
- * @param {function} countdownTime - (optional) how long in seconds to countdown before restarting, default 30 seconds
+ * @param {function} certificateCallback - Callback that can be used to update the certificates or trigger a restart etc.
+ * @param {boolean} [optGenerateAnyway=false] - (optional) True to generate certificates before the 60 days has passed.
+ * @param {boolean} [optStaging=false] - (optional) True to use staging mode instead of production.
  * 
  * @note
- * You can only start the daemon once for now
+ * You can only start the daemon once for now.
  */
-export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, certificateCallback, optGenerateAnyway, optStaging, optAutoRestart, countdownHandler, countdownTime)
+export async function startLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optGenerateAnyway = false, optStaging = false)
 ```
 
 ### HTTP Mixin

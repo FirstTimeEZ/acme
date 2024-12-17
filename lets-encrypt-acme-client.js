@@ -19,6 +19,7 @@ import * as asn1 from 'simple-asn1';
 import * as acme from 'base-acme-client';
 import { join } from 'path';
 import { generateKeyPairSync } from 'crypto';
+import { runCommandSync } from 'simple-open-ssl';
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 
 const packageJson = await import('./package.json', { with: { type: 'json' } });
@@ -71,23 +72,21 @@ let acmeDirectoryURL = DIRECTORY_PRODUCTION;
 let daemonI = null;
 let ariWindow = null;
 
+let remaining = { days: null, hours: null, minutes: null }
+
 /**
  * Starts the Let's Encrypt Daemon to Manage the SSL Certificate for the Server
  *
- * @param {array} fqdns - The fully qualified domain name as a SAN ["example.com","www.example.com"]
+ * @param {Array<string>} fqdns - The fully qualified domain names as a SAN (e.g., ["example.com", "www.example.com"]).
  * @param {string} sslPath - The path where the public and private keys will be stored/loaded from.
- * @param {boolean} daysRemaining - The number of days left before the certificate expires; remember to reset this in the certificateCallback (currently to 89)
- * @param {function} certificateCallback - callback that can be used to update the certificates if auto restart is disabled
- * @param {boolean} optGenerateAnyway - (optional) True to generate certificates before the 60 days has passed
- * @param {boolean} optStaging - (optional) True to use staging mode instead of production
- * @param {boolean} optAutoRestart - (optional) True to restart after certificates are generated, You don't need to do this but you might want to
- * @param {function} countdownHandler - (optional) paramterless function that will fire every second during the restart count down
- * @param {function} countdownTime - (optional) how long in seconds to countdown before restarting, default 30 seconds
+ * @param {function} certificateCallback - Callback that can be used to update the certificates or trigger a restart etc.
+ * @param {boolean} [optGenerateAnyway=false] - (optional) True to generate certificates before the 60 days has passed.
+ * @param {boolean} [optStaging=false] - (optional) True to use staging mode instead of production.
  * 
  * @note
- * You can only start the daemon once for now
+ * You can only start the daemon once for now.
  */
-export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, certificateCallback, optGenerateAnyway, optStaging, optAutoRestart, countdownHandler, countdownTime) {
+export async function startLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optGenerateAnyway = false, optStaging = false) {
     if (daemonI === null) {
         const randTime = Math.floor(Math.random() * (12300000 - 1000000 + 1)) + 1000000;
 
@@ -107,7 +106,7 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, cert
 
                 await internalFetchSuggest(sslPath, acmeDirectory);
 
-                if (internalDetermineRequirement(fqdns, sslPath, daysRemaining, optStaging) && optGenerateAnyway !== true) {
+                if (internalDetermineRequirement(fqdns, sslPath, optStaging) && optGenerateAnyway !== true) {
                     return;
                 }
 
@@ -115,7 +114,7 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, daysRemaining, cert
 
                 for (let index = 0; index <= 3; index++) {
                     try {
-                        const success = await internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optAutoRestart, countdownHandler, countdownTime, optStaging);
+                        const success = await internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optStaging);
 
                         if (success === true) {
                             console.log("Completed Successfully", index + 1);
@@ -217,7 +216,7 @@ function internalCheckForLocalHostOnce(req) {
     return false;
 }
 
-function internalDetermineRequirement(fqdns, certFilePath, daysRemaining, optStaging) {
+function internalDetermineRequirement(fqdns, certFilePath, optStaging) {
     const certFile = join(certFilePath, LAST_CERT_FILE);
     let ok = false;
 
@@ -268,7 +267,8 @@ function internalDetermineRequirement(fqdns, certFilePath, daysRemaining, optSta
             }
         }
 
-        //todo: rework/re-add daysRemaining based window
+        remaining.days === null && getExpireDateFromCertificate(join(certFilePath, "certificate.pem"));
+        remaining.days && console.log(remaining.message);
     }
 
     return ok;
@@ -414,14 +414,12 @@ async function internalGetAcmeKeyChain(sslPath) {
     }
 }
 
-async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optAutoRestart, countdownHandler, countdownTime, optStaging) {
+async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optStaging) {
     let domains = [];
     let account = undefined;
     let nextNonce = undefined;
     let firstNonce = undefined;
     let authorizations = undefined;
-
-    countdownHandler != undefined && (countdownTime == undefined || countdownTime < 30) && (countdownTime = 30);
 
     firstNonce = await acme.newNonce(acmeDirectory.newNonce);
 
@@ -543,32 +541,15 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
 
                 writeFileSync(join(sslPath, LAST_CERT_FILE), JSON.stringify({ time: Date.now(), names: fqdns, staging: optStaging }));
 
-                setTimeout(async () => { console.log(await internalUpdateSuggestFromText(certificateText, acmeDirectory)); }, 5000);
+                setTimeout(async () => {
+                    console.log(await internalUpdateSuggestFromText(certificateText, acmeDirectory));
+                    getExpireDateFromCertificate(join(sslPath, "certificate.pem"));
+                    remaining.message && console.log(remaining.message);
+                }, 5000);
 
-                if (optAutoRestart === true) {
-                    console.log("-------");
-                    console.log("Auto Restart is Enabled");
-                    console.log("Restarting Server when ready...");
-                    console.log("-------");
-
-                    if (countdownHandler == undefined) {
-                        process.exit(123); // Resolved by exit
-                    }
-                    else {
-                        let count = 0;
-                        setInterval(() => (count++, count > countdownTime ? process.exit(123) : countdownHandler()), 1000); // Resolved by exit
-                    }
-                }
-                else if (certificateCallback != undefined) {
-                    await new Promise((resolve) => {
-                        const certI = setInterval(() => {
-                            certificateCallback();
-                            internalCheckAnswered();
-                            clearInterval(certI);
-                            resolve();
-                        }, 200);
-                    });
-                }
+                await new Promise((resolve) => {
+                    const certI = setInterval(() => { certificateCallback(); internalCheckAnswered(); clearInterval(certI); resolve(); }, 200);
+                });
 
                 resolve(true);
             }
@@ -621,4 +602,30 @@ function checkCertificateTextValid(certificateText) {
 
 function checkPrivateKeyValid(privateKey) {
     return privateKey.startsWith("-----BEGIN PRIVATE KEY-----") && (privateKey.endsWith("-----END PRIVATE KEY-----") || privateKey.endsWith("-----END PRIVATE KEY-----\n") || privateKey.endsWith("-----END PRIVATE KEY----- "))
+}
+
+function getExpireDateFromCertificate(__certPath) {
+    const output = runCommandSync(`x509 -in "${__certPath}" -enddate -noout`);
+
+    if (output != undefined) {
+        try {
+            const specificDate = new Date(output);
+            const currentDate = new Date();
+
+            const t = specificDate.getTime() - currentDate.getTime();
+
+            if (t > 0) {
+                const d = Math.floor(t / (1000 * 60 * 60 * 24));
+
+                if (d > 0) {
+                    remaining.days = d;
+                    remaining.hours = Math.floor((t % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    remaining.minutes = Math.floor((t % (1000 * 60 * 60)) / (1000 * 60));
+                    remaining.message = `Time until renewal required: ${remaining.days} days, ${remaining.hours} hours, ${remaining.minutes} minutes`;
+                }
+            }
+        } catch (exception) {
+            console.log(exception); // Not a date
+        }
+    }
 }
