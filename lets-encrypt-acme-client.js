@@ -622,6 +622,7 @@ function getExpireDateFromCertificate(__certPath) {
                     remaining.hours = Math.floor((t % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                     remaining.minutes = Math.floor((t % (1000 * 60 * 60)) / (1000 * 60));
                     remaining.message = `Time until renewal required: ${remaining.days} days, ${remaining.hours} hours, ${remaining.minutes} minutes`;
+                    return;
                 }
             }
         } catch (exception) {
