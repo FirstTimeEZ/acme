@@ -292,17 +292,17 @@ function internalCheckChallenges() {
 async function internalUpdateDirectory() {
     const dir = await acme.newDirectory(acmeDirectoryURL);
 
-    if (dir.answer.directory != undefined) {
-        acmeDirectory = dir.answer.directory;
+    if (dir.get != undefined) {
+        acmeDirectory = dir.get;
     }
     else {
         if (acmeDirectory === null) {
-            console.error("Error getting directory first time", dir.answer.error);
+            console.error("Error getting directory first time", dir.error);
 
             const dir = await acme.newDirectory(acmeDirectoryURL);
 
-            if (dir.answer.directory != undefined) {
-                acmeDirectory = dir.answer.directory;
+            if (dir.get != undefined) {
+                acmeDirectory = dir.get;
             }
             else {
                 console.error("Failed to get directory after multiple attempts, trying again later");
@@ -311,7 +311,7 @@ async function internalUpdateDirectory() {
             }
         }
         else {
-            console.log("Error updating directory, trying to use the old copy", dir.answer.error);
+            console.log("Error updating directory, trying to use the old copy", dir.error);
         }
     }
 
@@ -424,49 +424,49 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
     firstNonce = await acme.newNonce(acmeDirectory.newNonce);
 
     if (firstNonce.nonce == undefined) {
-        console.error("Error getting nonce", firstNonce.answer.error);
+        console.error("Error getting nonce", firstNonce.error);
         return false;
     }
 
     account = await acme.createAccount(firstNonce.nonce, acmeKeyChain.privateKey, jsonWebKey, acmeDirectory).catch(console.error);
 
-    if (account.answer.account == undefined || account.answer.account.status != VALID) {
-        console.error("Error creating account", account.answer.error);
+    if (account.get == undefined || account.get.status != VALID) {
+        console.error("Error creating account", account.error);
         return false;
     }
 
     fqdns.forEach((element) => domains.push({ "type": "dns", "value": element }));
 
-    const order = await acme.createOrder(account.answer.location, account.nonce, acmeKeyChain.privateKey, domains, acmeDirectory);
+    const order = await acme.createOrder(account.location, account.nonce, acmeKeyChain.privateKey, domains, acmeDirectory);
 
-    if (order.answer.order == undefined) {
-        console.error("Error getting order", order.answer.error);
+    if (order.get == undefined) {
+        console.error("Error getting order", order.error);
         return false;
     }
 
     console.log("Next Nonce", (nextNonce = order.nonce));
 
-    authorizations = order.answer.order.authorizations;
+    authorizations = order.get.authorizations;
 
     for (let index = 0; index < authorizations.length; index++) {
-        const auth = await acme.postAsGet(account.answer.location, nextNonce, acmeKeyChain.privateKey, authorizations[index], acmeDirectory);
+        const auth = await acme.postAsGet(account.location, nextNonce, acmeKeyChain.privateKey, authorizations[index], acmeDirectory);
 
-        if (auth.answer.get.status) {
-            for (let index = 0; index < auth.answer.get.challenges.length; index++) {
-                const challenge = auth.answer.get.challenges[index];
+        if (auth.get.status) {
+            for (let index = 0; index < auth.get.challenges.length; index++) {
+                const challenge = auth.get.challenges[index];
                 challenge.type == HTTP && (challenge.answered = false, pendingChallenges.push(challenge));
             }
 
             console.log("Next Nonce", (nextNonce = auth.nonce));
         } else {
-            console.error("Error getting auth", auth.answer.error);
+            console.error("Error getting auth", auth.error);
         }
     }
 
     for (let index = 0; index < pendingChallenges.length; index++) {
         if (pendingChallenges[index].type == HTTP && pendingChallenges[index].status == STATUS_PENDING) {
-            const auth = await acme.postAsGetChal(account.answer.location, nextNonce, acmeKeyChain.privateKey, pendingChallenges[index].url, acmeDirectory);
-            auth.answer.get.status ? console.log("Next Nonce", (nextNonce = auth.nonce), "Authed Challenge") : console.error("Error getting auth", auth.answer.error);
+            const auth = await acme.postAsGetChal(account.location, nextNonce, acmeKeyChain.privateKey, pendingChallenges[index].url, acmeDirectory);
+            auth.get.status ? console.log("Next Nonce", (nextNonce = auth.nonce), "Authed Challenge") : console.error("Error getting auth", auth.error);
         }
     }
 
@@ -477,11 +477,11 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
 
         await new Promise(async (resolve) => {
             const waitForReady = setInterval(async () => {
-                await acme.postAsGet(account.answer.location, nextNonce, acmeKeyChain.privateKey, order.answer.location, acmeDirectory).then((order) => {
+                await acme.postAsGet(account.location, nextNonce, acmeKeyChain.privateKey, order.location, acmeDirectory).then((order) => {
                     nextNonce = order.nonce;
 
-                    if (order.answer.get != undefined && order.answer.get.status == "ready") {
-                        finalizedInfo = order.answer.get.finalize;
+                    if (order.get != undefined && order.get.status == "ready") {
+                        finalizedInfo = order.get.finalize;
                         console.log("Ready to Finalize", fqdns);
                         clearInterval(waitForReady);
                         resolve();
@@ -492,17 +492,17 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
 
         await new Promise(async (resolve) => {
             const waitForFinalize = setInterval(async () => {
-                await acme.finalizeOrder(fqdns[0], account.answer.location, nextNonce, acmeKeyChain.privateKey, acmeKeyChain.publicKeySign, acmeKeyChain.privateKeySign, finalizedInfo, fqdns, acmeDirectory).then((finalized) => {
-                    if (finalized.answer.get) {
-                        if (finalized.answer.get.status == "processing" || finalized.answer.get.status == VALID) {
-                            finalizedLocation = finalized.answer.location;
+                await acme.finalizeOrder(fqdns[0], account.location, nextNonce, acmeKeyChain.privateKey, acmeKeyChain.publicKeySign, acmeKeyChain.privateKeySign, finalizedInfo, fqdns, acmeDirectory).then((finalized) => {
+                    if (finalized.get) {
+                        if (finalized.get.status == "processing" || finalized.get.status == VALID) {
+                            finalizedLocation = finalized.location;
                             console.log("Certificate Location", finalizedLocation);
                             clearInterval(waitForFinalize);
                             resolve();
                         }
                     }
                     else {
-                        console.error("Error getting order", finalized.answer.error);
+                        console.error("Error getting order", finalized.error);
                     }
 
                     console.log("Next Nonce", (nextNonce = finalized.nonce));
@@ -514,9 +514,9 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
 
         await new Promise(async (resolve) => {
             const waitForProcessingValid = setInterval(async () => {
-                await acme.postAsGet(account.answer.location, nextNonce, acmeKeyChain.privateKey, finalizedLocation, acmeDirectory).then((checkFinalized) => {
-                    if (checkFinalized.answer.get != undefined && checkFinalized.answer.get.status == VALID) {
-                        finalizedCertificateLocation = checkFinalized.answer.get.certificate;
+                await acme.postAsGet(account.location, nextNonce, acmeKeyChain.privateKey, finalizedLocation, acmeDirectory).then((checkFinalized) => {
+                    if (checkFinalized.get != undefined && checkFinalized.get.status == VALID) {
+                        finalizedCertificateLocation = checkFinalized.get.certificate;
                         console.log("Certificate URL:", finalizedCertificateLocation);
                         clearInterval(waitForProcessingValid);
                         resolve();
@@ -584,7 +584,7 @@ async function internalUpdateSuggestFromText(certificateText, acmeDirectory) {
 
             const window = await acme.fetchSuggestedWindow(acmeDirectory.renewalInfo, a, s);
 
-            window.answer.get != undefined && (ariWindow = window.answer.get.suggestedWindow);
+            window.get != undefined && (ariWindow = window.get.suggestedWindow);
 
             return ariWindow;
         }
