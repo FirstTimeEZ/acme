@@ -173,7 +173,7 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, certificateCallback
 
     const time = 33200000 + (Math.floor(Math.random() * (12300000 - 1000000 + 1)) + 1000000);
 
-    console.log(`Configuring Daemon to run after [${time}] milliseconds`);
+    console.log(`Configuring Daemon to run again after [${time}] milliseconds`);
 
     setInterval(daemon, time);
 }
