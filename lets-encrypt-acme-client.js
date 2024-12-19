@@ -83,9 +83,9 @@ let remaining = { days: null, hours: null, minutes: null };
  * Starts the Let's Encrypt Daemon to Manage the SSL Certificate for the Server
  *
  * @param {Array<string>} fqdns - The fully qualified domain names as a SAN (e.g., ["example.com", "www.example.com"]), You must use a `dnsProvider` if you include a wild card
- * @param {string} sslPath - The path where the public and private keys will be stored/loaded from.
+ * @param {string} sslPath - The path where your acme account, keys and generated certificates will be stored or loaded from
  * @param {function} certificateCallback - Callback that can be used to update the certificates or trigger a restart etc.
- * @param {boolean} [optGenerateAnyway=false] - (optional) True to generate certificates before the 60 days has passed.
+ * @param {boolean} [optGenerateAnyway=false] - (optional) True to generate certificates before the recommended time.
  * @param {boolean} [optStaging=false] - (optional) True to use staging mode instead of production.
  * 
  * @param {Object} dnsProvider - (optional) credentials for a supported dns provider if you want to use the `DNS-01` Challenge instead of `HTTP-01`
