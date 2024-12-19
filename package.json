@@ -1,7 +1,7 @@
 {
   "name": "lets-encrypt-acme-client",
   "author": "FirstTimeEZ",
-  "version": "30.0.2",
+  "version": "40.0.1",
   "description": "Automatically Issue and Renew Let's Encrypt Certificates by utilizing a Daemon that operates periodically alongside a Mixin to handle challenge completions. (ACMEv2)",
   "main": "lets-encrypt-acme-client.js",
   "type": "module",
@@ -33,7 +33,7 @@
   ],
   "license": "Apache-2.0",
   "dependencies": {
-    "base-acme-client": "^30.0.2",
+    "base-acme-client": "^30.0.3",
     "simple-asn1": "^4.0.1",
     "simple-open-ssl": "^1.0.7"
   },
