@@ -59,6 +59,7 @@ const REDIRECT_ONLY = "Cleared Answered Challenges - HTTP is now redirect only u
 const ONE_SECOND_MS = 1000;
 const CHECK_CLOSE_TIME = 65000;
 
+let challengeLists = [];
 let httpChallenges = [];
 
 let checkAnswersFlag = false;
@@ -74,7 +75,6 @@ let acmeDirectory = null;
 let acmeDirectoryURL = DIRECTORY_PRODUCTION;
 
 let one = false;
-let daemonI = null;
 let ariWindow = null;
 
 let remaining = { days: null, hours: null, minutes: null };
@@ -88,7 +88,7 @@ let remaining = { days: null, hours: null, minutes: null };
  * @param {boolean} [optGenerateAnyway=false] - (optional) True to generate certificates before the 60 days has passed.
  * @param {boolean} [optStaging=false] - (optional) True to use staging mode instead of production.
  * 
- * @param {Object} dnsProvider - credentials for a supported dns provider if you want to use the `DNS-01` Challenge instead of `HTTP-01`
+ * @param {Object} dnsProvider - (optional) credentials for a supported dns provider if you want to use the `DNS-01` Challenge instead of `HTTP-01`
  * @example
  * const dnsProvider = {
  *     name: "Cloud Flare",
@@ -175,7 +175,7 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, certificateCallback
 
     console.log(`Configuring Daemon to run after [${time}] milliseconds`);
 
-    daemonI = setInterval(daemon, time);
+    setInterval(daemon, time);
 }
 
 /**
@@ -361,6 +361,7 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
     let authorizations = undefined;
 
     CF_Provider.dnsChallenges = [];
+    challengeLists = [];
     httpChallenges = [];
 
     firstNonce = await acme.newNonce(acmeDirectory.newNonce);
@@ -397,12 +398,8 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
     for (let index = 0; index < authorizations.length; index++) {
         const auth = await acme.postAsGet(account.location, nextNonce, acmeKeyChain.privateKey, authorizations[index], acmeDirectory);
 
-        if (auth.get.status) {
-            for (let index = 0; index < auth.get.challenges.length; index++) {
-                const challenge = auth.get.challenges[index];
-                !dnsProvider && challenge.type == HTTP && (challenge.answered = false, challenge.domain = auth.get.identifier.value, challenge.wildcard = auth.get.wildcard ? auth.get.wildcard : false, httpChallenges.push(challenge));
-                dnsProvider && challenge.type == DNS && (challenge.answered = false, challenge.domain = auth.get.identifier.value, challenge.wildcard = auth.get.wildcard ? auth.get.wildcard : false, CF_Provider.dnsChallenges.push(challenge));
-            }
+        if (auth.get) {
+            challengeLists.push(auth);
 
             console.log("Next Nonce", (nextNonce = auth.nonce));
         } else {
@@ -410,15 +407,17 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
         }
     }
 
-    for (let index = 0; index < CF_Provider.dnsChallenges.length; index++) {
-        CF_Provider.dnsChallenges[index].answer = acme.base64urlEncode(createHash("sha256").update(`${CF_Provider.dnsChallenges[index].token}.${jsonWebKeyThumbPrint}`).digest());
-    }
-
     if (dnsProvider != undefined) {
         console.log("DNS Provider", dnsProvider.name);
 
         switch (dnsProvider.name) {
             case 'Cloud Flare': {
+                CF_Provider.dnsChallenges = extractChallengeType(challengeLists, DNS);
+
+                for (let index = 0; index < CF_Provider.dnsChallenges.length; index++) {
+                    CF_Provider.dnsChallenges[index].answer = acme.base64urlEncode(createHash("sha256").update(`${CF_Provider.dnsChallenges[index].token}.${jsonWebKeyThumbPrint}`).digest());
+                }
+
                 if (await CF_Provider.internalCloudFlareProvider(dnsProvider, account, acmeDirectory, nextNonce, acmeKeyChain)) {
                     return false;
                 }
@@ -434,6 +433,8 @@ async function internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, op
         }
     }
     else {
+        httpChallenges = extractChallengeType(challengeLists, HTTP);
+
         for (let index = 0; index < httpChallenges.length; index++) {
             if (httpChallenges[index].type == HTTP && httpChallenges[index].status == STATUS_PENDING) {
                 const auth = await acme.postAsGetChal(account.location, nextNonce, acmeKeyChain.privateKey, httpChallenges[index].url, acmeDirectory);
@@ -711,4 +712,19 @@ function getExpireDateFromCertificate(__certPath) {
     }
 
     remaining = { days: null, hours: null, minutes: null };
+}
+
+function extractChallengeType(list, challengeType) {
+    const chals = [];
+
+    for (let index = 0; index < list.length; index++) {
+        const auth = list[index];
+
+        for (let i1 = 0; i1 < auth.get.challenges.length; i1++) {
+            const challenge = auth.get.challenges[i1];
+            challenge.type == challengeType && (challenge.answered = false, challenge.domain = auth.get.identifier.value, challenge.wildcard = auth.get.wildcard ? auth.get.wildcard : false, chals.push(challenge));
+        }
+    }
+
+    return chals;
 }

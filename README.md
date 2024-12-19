@@ -38,7 +38,7 @@ The `Daemon` runs periodically to Issue or Renew the certificate
  * @param {boolean} [optGenerateAnyway=false] - (optional) True to generate certificates before the 60 days has passed.
  * @param {boolean} [optStaging=false] - (optional) True to use staging mode instead of production.
  * 
- * @param {Object} dnsProvider - credentials for a supported dns provider if you want to use the `DNS-01` Challenge instead of `HTTP-01`
+ * @param {Object} dnsProvider - (optional) credentials for a supported dns provider if you want to use the `DNS-01` Challenge instead of `HTTP-01`
  * @example
  * const dnsProvider = {
  *     name: "Cloud Flare",
