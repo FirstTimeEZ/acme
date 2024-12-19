@@ -33,9 +33,9 @@ The `Daemon` runs periodically to Issue or Renew the certificate
  * Starts the Let's Encrypt Daemon to Manage the SSL Certificate for the Server
  *
  * @param {Array<string>} fqdns - The fully qualified domain names as a SAN (e.g., ["example.com", "www.example.com"]), You must use a `dnsProvider` if you include a wild card
- * @param {string} sslPath - The path where your acme account, keys and generated certificates will be stored or loaded from
- * @param {function} certificateCallback - Callback that can be used to update the certificates or trigger a restart etc.
- * @param {boolean} [optGenerateAnyway=false] - (optional) True to generate certificates before the recommended time.
+ * @param {string} sslPath - The path where your acme account, keys and generated certificate will be stored or loaded from
+ * @param {function} certificateCallback - Callback that can be used to update the current certificate or trigger a restart etc.
+ * @param {boolean} [optGenerateAnyway=false] - (optional) True to generate a new certificate before the recommended time.
  * @param {boolean} [optStaging=false] - (optional) True to use staging mode instead of production.
  * 
  * @param {Object} dnsProvider - (optional) credentials for a supported dns provider if you want to use the `DNS-01` Challenge instead of `HTTP-01`
