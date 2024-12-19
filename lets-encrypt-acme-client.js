@@ -74,6 +74,7 @@ let acmeDirectory = null;
 let acmeDirectoryURL = DIRECTORY_PRODUCTION;
 
 let daemonI = null;
+let one = false;
 let ariWindow = null;
 
 let remaining = { days: null, hours: null, minutes: null };
@@ -98,79 +99,83 @@ let remaining = { days: null, hours: null, minutes: null };
  * If you start this more than once nothing will happen
  */
 export async function startLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optGenerateAnyway = false, optStaging = false, dnsProvider = undefined) {
-    if (daemonI === null) {
-        let wcFlag = fqdns.some(v => v.startsWith("*."));
-
-        if (wcFlag && !dnsProvider) {
-            console.log("You can't create a wildcard certificate because there is no DNS Provider");
-            return false;
-        }
-
-        if (wcFlag && dnsProvider) {
-            const wcd = fqdns.find(v => v.startsWith("*."));
-
-            const split = wcd.split(".");
-
-            if (split.length >= 3) {
-                fqdns = [extractZoneName(split), wcd]
-            }
-        }
-
-        optStaging === true && (acmeDirectoryURL = DIRECTORY_STAGING, console.log("USING THE STAGING SERVER"));
-
-        const daemon = async () => {
-            try {
-                console.log("Starting Lets Encrypt ACME Daemon!", "v" + packageJson.default.version);
-                console.log("Copyright © 2024 " + packageJson.default.author);
-                console.log("--------");
-
-                if (await internalUpdateDirectory()) {
-                    return;
-                }
-
-                console.log("Determining if its time to issue a new SSL Certificate");
-
-                await internalFetchSuggest(sslPath, acmeDirectory);
-
-                if (internalDetermineRequirement(fqdns, sslPath, optStaging) && optGenerateAnyway !== true) {
-                    return;
-                }
-
-                await internalGetAcmeKeyChain(sslPath);
-
-                for (let index = 0; index <= 3; index++) {
-                    try {
-                        const success = await internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optStaging, dnsProvider);
-
-                        if (success === true) {
-                            console.log("Daemon Completed Successfully", index + 1);
-                            return;
-                        }
-                        else {
-                            index + 1 <= 3 && console.log("Something went wrong, trying again", index + 1);
-                        }
-                    } catch (exception) {
-                        console.error("Something went wrong, trying again", index + 1, exception);
-                    }
-                }
-
-                console.error("------------------");
-                console.error("Something is preventing the Lets Encrypt Daemon");
-                console.error("from creating or renewing your certificate");
-                console.error("------------------");
-            } catch (exception) {
-                console.log(exception);
-            }
-        };
-
-        await daemon();
-
-        const time = 33200000 + (Math.floor(Math.random() * (12300000 - 1000000 + 1)) + 1000000);
-
-        console.log(`Configuring Daemon to run after [${time}] milliseconds`);
-
-        daemonI = setInterval(daemon, time);
+    if (one === true) {
+        return;
     }
+
+    one = true;
+
+    let wcFlag = fqdns.some(v => v.startsWith("*."));
+
+    if (wcFlag && !dnsProvider) {
+        console.log("You can't create a wildcard certificate because there is no DNS Provider");
+        return false;
+    }
+
+    if (wcFlag && dnsProvider) {
+        const wcd = fqdns.find(v => v.startsWith("*."));
+
+        const split = wcd.split(".");
+
+        if (split.length >= 3) {
+            fqdns = [extractZoneName(split), wcd]
+        }
+    }
+
+    optStaging === true && (acmeDirectoryURL = DIRECTORY_STAGING, console.log("USING THE STAGING SERVER"));
+
+    const daemon = async () => {
+        try {
+            console.log("Starting Lets Encrypt ACME Daemon!", "v" + packageJson.default.version);
+            console.log("Copyright © 2024 " + packageJson.default.author);
+            console.log("--------");
+
+            if (await internalUpdateDirectory()) {
+                return;
+            }
+
+            console.log("Determining if its time to issue a new SSL Certificate");
+
+            await internalFetchSuggest(sslPath, acmeDirectory);
+
+            if (internalDetermineRequirement(fqdns, sslPath, optStaging) && optGenerateAnyway !== true) {
+                return;
+            }
+
+            await internalGetAcmeKeyChain(sslPath);
+
+            for (let index = 0; index <= 3; index++) {
+                try {
+                    const success = await internalLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optStaging, dnsProvider);
+
+                    if (success === true) {
+                        console.log("Daemon Completed Successfully", index + 1);
+                        return;
+                    }
+                    else {
+                        index + 1 <= 3 && console.log("Something went wrong, trying again", index + 1);
+                    }
+                } catch (exception) {
+                    console.error("Something went wrong, trying again", index + 1, exception);
+                }
+            }
+
+            console.error("------------------");
+            console.error("Something is preventing the Lets Encrypt Daemon");
+            console.error("from creating or renewing your certificate");
+            console.error("------------------");
+        } catch (exception) {
+            console.log(exception);
+        }
+    };
+
+    await daemon();
+
+    const time = 33200000 + (Math.floor(Math.random() * (12300000 - 1000000 + 1)) + 1000000);
+
+    console.log(`Configuring Daemon to run after [${time}] milliseconds`);
+
+    daemonI = setInterval(daemon, time);
 }
 
 /**
