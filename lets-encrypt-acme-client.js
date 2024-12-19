@@ -73,8 +73,8 @@ let jsonWebKeyThumbPrint = null;
 let acmeDirectory = null;
 let acmeDirectoryURL = DIRECTORY_PRODUCTION;
 
-let daemonI = null;
 let one = false;
+let daemonI = null;
 let ariWindow = null;
 
 let remaining = { days: null, hours: null, minutes: null };
