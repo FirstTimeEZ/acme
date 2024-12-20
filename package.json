@@ -1,7 +1,7 @@
 {
   "name": "lets-encrypt-acme-client",
   "author": "FirstTimeEZ",
-  "version": "40.0.2",
+  "version": "50.0.1",
   "description": "Automatically Create and Renew LetsEncrypt! SSL Certificates, including Wildcard Certificates for supported DNS Providers",
   "main": "lets-encrypt-acme-client.js",
   "type": "module",
