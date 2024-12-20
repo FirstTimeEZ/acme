@@ -1,18 +1,18 @@
-# Lets Encrypt ACME Client
+# LetsEncrypt! ACME Client
 
-Automatically Issue and Renew `Let's Encrypt Certificates` (ACMEv2) using `DNS-01` or `HTTP-01`
-
-Utilizes a `Daemon` that operates periodically alongside a `Mixin` to handle challenge completions.
+Automatically Create and Renew `LetsEncrypt! SSL Certificates`, including `Wildcard Certificates` for supported `DNS Providers`
 
 ### Getting Started
 
-You can view the full [`SSL Server Example`](https://github.com/FirstTimeEZ/server-ssl) to understand the `Daemon` and `Mixin`
+This most recent version of this package is implemented in [`SSL Server`](https://github.com/FirstTimeEZ/server-ssl) and you can use that to understand how it works if the `jsdoc` isn't enough information.
 
 ### Wild Card Certificates
 
-You can generate `Wild Card Certificates` if you use a supported `DNS-01` provider
+You can generate `Wild Card Certificates` if you are using a supported `DNS Provider`
 
-At this present moment that is only `Cloud Flare`
+| Supported DNS Providers |
+|-------------------------|
+| Cloud Flare  |
 
 ```
 let dnsProvider = {
@@ -22,15 +22,17 @@ let dnsProvider = {
 }
 ```
 
+`DNS Providers` are used to complete `DNS-01` challenges
+
 --------
 
-### Daemon
+### LetsEncrypt! Daemon
 
-The `Daemon` runs periodically to Issue or Renew the certificate
+The `Daemon` runs periodically to `Create` or `Renew` the `Certificate`
 
 ```javascript
 /**
- * Starts the Let's Encrypt Daemon to Manage the SSL Certificate for the Server
+ * Starts the LetsEncrypt! Daemon to Manage the SSL Certificate for the Server
  *
  * @param {Array<string>} fqdns - The fully qualified domain names as a SAN (e.g., ["example.com", "www.example.com"]), You must use a `dnsProvider` if you include a wild card
  * @param {string} sslPath - The path where your acme account, keys and generated certificate will be stored or loaded from
@@ -51,9 +53,11 @@ The `Daemon` runs periodically to Issue or Renew the certificate
 export async function startLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optGenerateAnyway = false, optStaging = false, dnsProvider = undefined)
 ```
 
-### HTTP Mixin
+### HTTP Mixin for `HTTP-01`
 
 `HTTP Mixin` that completes the `HTTP-01` Challenges created by the `Daemon`
+
+This is not required if you are using a `DNS Provider`
 
 ```javascript
 /**
@@ -67,3 +71,9 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, certificateCallback
  */
 export async function checkChallengesMixin(req, res)
 ```
+
+--------
+
+### Challenges
+
+The `DNS-01` and `HTTP-01` challenges have been implemented

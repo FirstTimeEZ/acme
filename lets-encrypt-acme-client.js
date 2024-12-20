@@ -80,7 +80,7 @@ let ariWindow = null;
 let remaining = { days: null, hours: null, minutes: null };
 
 /**
- * Starts the Let's Encrypt Daemon to Manage the SSL Certificate for the Server
+ * Starts the LetsEncrypt! Daemon to Manage the SSL Certificate for the Server
  *
  * @param {Array<string>} fqdns - The fully qualified domain names as a SAN (e.g., ["example.com", "www.example.com"]), You must use a `dnsProvider` if you include a wild card
  * @param {string} sslPath - The path where your acme account, keys and generated certificate will be stored or loaded from

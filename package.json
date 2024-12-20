@@ -1,8 +1,8 @@
 {
   "name": "lets-encrypt-acme-client",
   "author": "FirstTimeEZ",
-  "version": "40.0.1",
-  "description": "Automatically Issue and Renew Let's Encrypt Certificates by utilizing a Daemon that operates periodically alongside a Mixin to handle challenge completions. (ACMEv2)",
+  "version": "40.0.2",
+  "description": "Automatically Create and Renew LetsEncrypt! SSL Certificates, including Wildcard Certificates for supported DNS Providers",
   "main": "lets-encrypt-acme-client.js",
   "type": "module",
   "keywords": [
@@ -29,7 +29,16 @@
     "dns",
     "api",
     "configuration",
-    "monitoring"
+    "monitoring",
+    "http",
+    "redirect",
+    "dns-01",
+    "wild",
+    "card",
+    "wildcard",
+    "cloud",
+    "flare",
+    "cloudflare"
   ],
   "license": "Apache-2.0",
   "dependencies": {
