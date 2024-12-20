@@ -188,7 +188,7 @@ export default class LetsEncryptDaemon {
      *
      * @example
      * createServerHTTP(async (req, res) => {
-     *     if (STATE.optLetsEncrypt && await checkChallengesMixin(req, res)) { return; } 
+     *     if (STATE.optLetsEncrypt && checkChallengesMixin(req, res)) { return; } 
      *     // normal request redirect etc
      * }).listen(80);
      */

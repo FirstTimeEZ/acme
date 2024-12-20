@@ -14,7 +14,7 @@ Create a `LetsEncryptDaemon` and then start the `Daemon`
 
 ```javascript
 const daemon = new LetsEncryptDaemon();
-daemon.startLetsEncryptDaemon(...); // You can only start this once, it will configure itself to run again.
+await daemon.startLetsEncryptDaemon(...); // You can only start this once, it will configure itself to run again.
 daemon.checkChallengesMixin(...); // You must check the HTTP-01 Challenges for each LetsEncryptDaemon
 ```
 
@@ -50,9 +50,15 @@ let dnsProvider = {
 
 `LetsEncryptDaemon` is the default exported class
 
+```javascript
+const daemon = new LetsEncryptDaemon();
+```
+
 ### Daemon
 
 The `Daemon` runs periodically to `Create` or `Renew` the `Certificate`
+
+### Jsdoc
 
 ```javascript
 /**
@@ -74,7 +80,12 @@ The `Daemon` runs periodically to `Create` or `Renew` the `Certificate`
  * @note
  * If you start this more than once nothing will happen
  */
-export async function startLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optGenerateAnyway = false, optStaging = false, dnsProvider = undefined)
+```
+
+#### Usage
+
+```javascript
+await daemon.startLetsEncryptDaemon(fqdns, sslPath, certificateCallback, optGenerateAnyway = false, optStaging = false, dnsProvider = undefined)
 ```
 
 ### HTTP Mixin for `HTTP-01`
@@ -83,17 +94,24 @@ export async function startLetsEncryptDaemon(fqdns, sslPath, certificateCallback
 
 This is not required if you are using a `DNS Provider`
 
+### Jsdoc
+
 ```javascript
 /**
  * Node.js Middleware function to check and respond to ACME HTTP-01 challenges issued by this LetsEncryptDaemon inside the HTTP Server.
  *
  * @example
  * createServerHTTP(async (req, res) => {
- *     if (STATE.optLetsEncrypt && await checkChallengesMixin(req, res)) { return; } 
+ *     if (STATE.optLetsEncrypt && checkChallengesMixin(req, res)) { return; } 
  *     // normal request redirect etc
  * }).listen(80);
  */
-export async function checkChallengesMixin(req, res)
+```
+
+#### Usage
+
+```javascript
+if (daemon.checkChallengesMixin(req, res)) { return; } // Inside the HTTP Server
 ```
 
 --------
